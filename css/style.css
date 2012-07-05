@@ -1,0 +1,60 @@
+body { 
+    background: #EEEEEE;
+    font-family: sans-serif;
+    font-size: 90%;
+}
+table {
+    background: #AAAACC;
+    font-family: sans-serif;
+    font-size: 90%;
+    width: 1030px;
+    margin-left:auto;
+    margin-right:auto;
+    table-layout: fixed;
+}
+.margin {
+    width: 1030px;
+    margin-left:auto;
+    margin-right:auto;
+    font-family: sans-serif;
+    font-size: 90%;
+}
+.thread {
+    margin-top: 10px;
+}
+.post {
+    margin-top: 5px;
+}
+.count {
+    color: grey;
+}
+.spoiler {
+    background: #000000;
+    color: #000000;
+}
+.quote {
+    color: #077;
+}
+.spoiler:hover {
+    background: #000000;
+    color: #FFFFFF;
+}
+.username { 
+    color: #3333CC;
+    font-weight: bold;
+}
+.subject {
+    color: #CC3333;
+    font-size: large;
+    font-weight: bold;
+}
+.fileview {
+    max-width: 400px;
+    max-height: 400px;
+}
+.center {
+    text-align: center;
+    margin-top: 20px;
+    font-family: sans-serif;
+    font-size: 90%;
+}
