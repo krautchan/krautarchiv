@@ -1,0 +1,3 @@
+1. run krautarchiv.pl in data/ to collect kc posts
+2. run index.pl as cgi with a httpd of your choice
+3. deny access to data/, domain/ and view/
