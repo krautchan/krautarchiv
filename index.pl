@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use strict;
+no strict "refs";
 use warnings;
 
 use CGI;
@@ -17,73 +18,54 @@ my $thumb_folder = "thumb";
 main();
 
 sub main {
-    my $action = $cgi->param('action');
-    my $view = $cgi->param('view');
+    my $action = $cgi->param('action') || "";
+    my $view = $cgi->param('view') || "empty_index";
     
-    if($action eq "delete_tag") {
-        action_delete_tag();
-        return;
-    } elsif($action eq "add_tag") {
-        action_add_tag();
+    if($action) {
+        &{$action}();
         return;
     }
 
-    if($view eq "board") {
-        _board();
-    } elsif($view eq "thread") {
-        _thread();
-    } elsif($view eq "show_file") {
-        _show_file();
-    } elsif($view eq "top_ten") {
-        _top_ten();
-    } elsif($view eq "show_files") {
-        _show_files();
-    } elsif($view eq "tags"){
-        _tags();
-    } elsif($view eq "tag") {
-        _tag();
-    } else {
-        _index();
-    }
+    &{$view}();
 }
 
-sub action_add_tag {
+sub add_tag {
     my $tag = $cgi->param('tag');
     my $file_id = $cgi->param('file_id');
 
     unless($tag && $file_id) {
-        _index();
+        empty_index();
         return;
     }
 
     my $tags_rowid = $db->add_tag($cgi->escapeHTML($tag));
     $db->add_tag_to_file($tags_rowid,$file_id);
 
-    _show_file();
+    show_file();
 }
 
-sub action_delete_tag {
+sub delete_tag {
     my @tags_rowid_list = $cgi->param('tags_rowid');
     my $file_id = $cgi->param('file_id');
 
     unless(@tags_rowid_list) {
-        _show_file();
+        show_file();
         return;
     }
     
     foreach(@tags_rowid_list) {
         $db->delete_tag($_,$file_id);
     }
-   _show_file();
+   show_file();
 }
 
-sub _index {
+sub empty_index {
     require "view/_index.pm";
     my $vars = {menu => menu_()};
     _index::content($vars);
 }
 
-sub _board {
+sub board {
     require "view/_board.pm";
 
     my $board_id = $cgi->param('board_id') || undef;
@@ -94,7 +76,7 @@ sub _board {
     my $offset = $page * $limit;
 
     unless($board_id) {
-        _index();
+        empty_index();
         return;
     }
     my $vars = {
@@ -120,14 +102,14 @@ sub _board {
     _board::content($vars);
 }
 
-sub _thread {
+sub thread {
     require "view/_thread.pm";
 
     my $board_id = $cgi->param('board_id') || undef;
     my $thread_id = $cgi->param('thread_id') || undef;
 
     unless($board_id && $thread_id) {
-        _index();
+        empty_index();
         return;
     }
 
@@ -144,7 +126,7 @@ sub _thread {
     _thread::content($vars);
 }
 
-sub _tags {
+sub tags {
     require "view/_tags.pm";
     my $letter = $cgi->param("letter") || 'a';
     
@@ -154,7 +136,7 @@ sub _tags {
     _tags::content($vars);
 }
 
-sub _tag {
+sub tag {
     require "view/_tag.pm";
     my $tags_rowid = $cgi->param("tags_rowid");
     my $page = $cgi->param("page");
@@ -179,7 +161,7 @@ sub _tag {
     _tag::content($vars);
 }
 
-sub _top_ten {
+sub top_ten {
     my $type = $cgi->param('type');
 
     if($type eq 'files') {
@@ -204,11 +186,11 @@ sub _top_ten {
 
         _top_ten_subjects::content($vars);
     } else {
-        _index();
+        empty_index();
     }
 }
 
-sub _show_files {
+sub show_files {
     require "view/_show_files.pm";
     my $board = $cgi->param('board') || "%";
     my $filetype = $cgi->param('filetype') || "";
@@ -249,20 +231,20 @@ sub _show_files {
     _show_files::content($vars);
 }
 
-sub _show_file {
+sub show_file {
     require "view/_show_file.pm";
     
     my $file_id = $cgi->param('file_id') || undef;
 
     unless($file_id) {
-        _index();
+        empty_index();
         return;
     }
     
     my $file = $db->get_file($file_id);
 
     unless($file) {
-        _index();
+        empty_index();
         return;
     }
     
@@ -335,4 +317,8 @@ sub thumbnail_ {
         return $thumbpath;
     }
     return $path;
+}
+
+sub AUTOLOAD {
+    empty_index();
 }
