@@ -21,6 +21,8 @@ main(('b','int','vip','a','c','co','d','e','f','fb','k','l','li','m','n','p','ph
 
 sub main {
     my (@boards) = @_;
+    
+    mkdir($file_folder);
 
     $db->setup();
     while(1) {
