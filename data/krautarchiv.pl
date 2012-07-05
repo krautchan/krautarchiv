@@ -10,8 +10,7 @@ use LWP;
 require "../domain/Database.pm";
 
 my $browser = LWP::UserAgent->new;
-$browser->agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 ".
-                "(KHTML, like Gecko) Chrom e/19.0.1084.56 Safari/536.5");
+$browser->agent("Krautarchiv/1.0 - Das Archiv fuer den Bernd von Welt");
 
 my $db = Database->new("data.db");
 
