@@ -102,10 +102,11 @@ sub add_file_to_post {
     my $self = shift;
     my $file_id = shift || croak("need file_id");
     my $posts_rowid = shift || croak("need posts_rowid");
+    my $filename = shift || "";
 
-    my $sth = $self->{dbh}->prepare("INSERT OR IGNORE INTO `post_files`(`file_id`,`posts_rowid`) VALUES(?,?)");
+    my $sth = $self->{dbh}->prepare("INSERT OR IGNORE INTO `post_files`(`file_id`,`posts_rowid`,`filename`) VALUES(?,?,?)");
 
-    $sth->execute($file_id,$posts_rowid);
+    $sth->execute($file_id,$posts_rowid,$filename);
 
     $self->{dbh}->commit;
 }
@@ -227,6 +228,32 @@ sub get_file_by_md5 {
     }
 }
 
+sub get_file_info_by_file_id {
+    my $self = shift;
+    my $file_id = shift || croak("need file_id");
+
+    my $sth = $self->{dbh}->prepare("SELECT `board`,`board_id`,`thread_id`,`post_id`, `file_id`,`filename`
+                                     FROM `post_files`
+                                     JOIN `posts` USING(`posts_rowid`)
+                                     JOIN `threads` USING(`threads_rowid`)
+                                     JOIN `boards` USING(`board_id`)
+                                     WHERE `file_id` = ?");
+    $sth->execute($file_id);
+
+    my @id_list = ();
+    while(my ($board, $board_id, $thread_id, $post_id, $fid, $filename) = $sth->fetchrow) {
+        push(@id_list,{
+                       board => $board,
+                       board_id => $board_id,
+                       thread_id => $thread_id,
+                       post_id => $post_id,
+                       file_id => $fid,
+                       filename => $filename
+                      });
+    }
+
+    return \@id_list;
+}
 
 sub get_board_list {
     my $self = shift;
@@ -240,32 +267,6 @@ sub get_board_list {
     }
 
     return \@board_list;
-}
-
-sub get_board_list_by_file_id {
-    my $self = shift;
-    my $file_id = shift || croak("need file_id");
-
-    my $sth = $self->{dbh}->prepare("SELECT `board`,`board_id`,`thread_id`,`post_id`, `file_id`
-                                     FROM `post_files`
-                                     JOIN `posts` USING(`posts_rowid`)
-                                     JOIN `threads` USING(`threads_rowid`)
-                                     JOIN `boards` USING(`board_id`)
-                                     WHERE `file_id` = ?");
-    $sth->execute($file_id);
-
-    my @id_list = ();
-    while(my ($board, $board_id, $thread_id, $post_id, $fid) = $sth->fetchrow) {
-        push(@id_list,{
-                       board => $board,
-                       board_id => $board_id,
-                       thread_id => $thread_id,
-                       post_id => $post_id,
-                       file_id => $fid
-                      });
-    }
-
-    return \@id_list;
 }
 
 sub get_thread_list {
@@ -583,6 +584,7 @@ sub setup {
               IF NOT EXISTS `post_files` (`post_files_rowid` INTEGER PRIMARY KEY,
                                           `file_id` INTEGER NOT NULL,
                                           `posts_rowid` INTEGER NOT NULL,
+                                          `filename` TEXT,
                                            UNIQUE(`file_id`,`posts_rowid`),
                                            FOREIGN KEY(`file_id`) REFERENCES `files`(`file_id`)
                                            ON DELETE CASCADE ON UPDATE CASCADE,

@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 
+use HTML::Entities ();
+
 package _show_file;
 
 sub content {
@@ -19,7 +21,8 @@ sub content {
     foreach(@{$vars->{board_list}}) {
         print "<br /><a href=?view=board&board_id=$_->{board_id}>$_->{board}</a>/".
               "<a href=?view=thread&board_id=$_->{board_id}&thread_id=$_->{thread_id}>$_->{thread_id}</a>/".
-              "<a href=?view=thread&board_id=$_->{board_id}&thread_id=$_->{thread_id}#$_->{post_id}>$_->{post_id}</a>\n";
+              "<a href=?view=thread&board_id=$_->{board_id}&thread_id=$_->{thread_id}#$_->{post_id}>$_->{post_id}</a>";
+        print " " . HTML::Entities::encode($_->{filename});
     }
     
     print "<p>Tags:";

@@ -166,7 +166,7 @@ sub _tag {
     
     foreach(@$file_list) {
         $_->{thumb} = media_file_($_->{file_id},$_->{path});
-        $_->{board_list} = $db->get_board_list_by_file_id($_->{file_id});
+        $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
     }
 
     my $total_count = $db->get_file_list_by_tag_count($tags_rowid);
@@ -188,7 +188,7 @@ sub _top_ten {
         my $file_list = $db->get_popular_files_list(10);
         foreach(@{$file_list}) {
             $_->{thumb} = media_file_($_->{file_id},$_->{path});
-            $_->{board_list} = $db->get_board_list_by_file_id($_->{file_id});
+            $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
         }
         
         my $vars = { menu => menu_() };
@@ -232,7 +232,7 @@ sub _show_files {
 
     foreach(@$file_list) {
         $_->{thumb} = media_file_($_->{file_id},$_->{path});
-        $_->{board_list} = $db->get_board_list_by_file_id($_->{file_id});
+        $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
     }
 
     my $vars = { menu => menu_() };
@@ -268,7 +268,7 @@ sub _show_file {
     
     $file->{path} = "$file_folder/$file->{path}"; 
     my $vars = {menu => menu_(), file => $file};
-    $vars->{board_list} = $db->get_board_list_by_file_id($file_id);
+    $vars->{board_list} = $db->get_file_info_by_file_id($file_id);
     $vars->{tag_list} = $db->get_tag_list_by_file_id($file_id);
 
     _show_file::content($vars);

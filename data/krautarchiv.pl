@@ -43,6 +43,11 @@ sub main {
 
 sub get_md5sum {
     my ($path) = @_;
+    
+    unless( -e $path) {
+        return undef;
+    }
+    
     open FILE, $path;
         binmode(FILE);
         my $md5 = Digest::MD5->new->addfile(*FILE)->hexdigest;
@@ -70,6 +75,9 @@ sub save_files {
 
     foreach(@{$post->{files}}) {
         my $md5 = get_md5sum(download_file($_->{path}));
+        unless($md5) {
+            next;
+        }
         print "File: $_->{path} MD5: $md5";
         if(my $file = $db->get_file_by_md5($md5)) {
             if($_->{path} ne $file->{path}) {
@@ -77,11 +85,11 @@ sub save_files {
                 unlink($file_folder.$_->{path});
             }
             my $file_id = $file->{file_id};
-            $db->add_file_to_post($file_id,$posts_rowid);
+            $db->add_file_to_post($file_id,$posts_rowid,$_->{filename});
         } else {
             print "- saved";
             my $file_id = $db->add_file($_->{path},$md5);
-            $db->add_file_to_post($file_id,$posts_rowid);
+            $db->add_file_to_post($file_id,$posts_rowid,$_->{filename});
         }
         print "\n";
     }
