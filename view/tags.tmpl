@@ -1,0 +1,24 @@
+[% menu %]
+    <div class=center>
+    [% FOREACH l IN ['a'..'z'] %]
+        [% IF letter != l %]
+            <a href="?view=tags&letter=[% l %]">[% l %]</a>
+        [% ELSE %]
+            [% l %]
+        [% END %]
+    [% END %]
+    </div>
+    <table>
+        <tr>
+        [% FOREACH tag IN tag_list %]
+            <td>
+                <a href="?view=tag&tags_rowid=[% tag.tags_rowid %]">[% tag.tag %]</a>
+            </td>
+    [% UNLESS loop.count mod 10 %]
+        </tr>
+        </tr>
+    [% END %]
+        [% END %]
+        </tr>
+    </table>
+    <div class=margin>[% time %] seconds</div>

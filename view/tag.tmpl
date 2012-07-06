@@ -1,0 +1,34 @@
+[% menu %]
+    <table>
+        <tr>
+        [% FOREACH file IN file_list %]
+            <td>
+                [% file.thumb %]
+                <ul>
+                [% FOREACH b IN file.board_list%]
+                    <li>
+                        <a href="?view=board&board_id=[% b.board_id %]">[% b.board %]</a>/<a href="?view=thread&board_id=[% b.board_id %]&thread_id=[% b.thread_id %]">[% b.thread_id %]</a>/<a href="?view=thread&board_id=[% b.board_id %]&thread_id=[% b.thread_id %]#[% b.post_id %]">[% b.post_id %]</a>/
+                        [% b.filename %]
+                    </li>
+                [% END %]
+                </ul>
+            </td>
+    [% UNLESS loop.count mod 5 %]
+        </tr>
+        <tr>
+    [% END %]
+        [% END %]
+        </tr>
+    </table>
+    <div class=margin>
+    [% IF page %]
+        <a href="?view=tag&tags_rowid=[% tags_rowid %]&page=[% prev_page %]">PREV</a>
+    [% END %]
+    [% FOREACH p IN page_list %]
+        <a href="?view=tag&tags_rowid=[% tags_rowid %]&page=[% p %]">[% p %]</a>
+    [% END %]
+    [% IF page < (max_pages - 1) %]
+        <a href="?view=tag&tags_rowid=[% tags_rowid %]&page=[% next_page %]">NEXT</a>
+    [% END %]
+        <p>Total: [% total %] ([% time %] seconds)</p>
+    </div>

@@ -1,0 +1,66 @@
+[% menu %]
+    <div class=margin>
+        <form action="" method=get>
+            <input type=hidden name=view value=show_files />
+            <select name=board size=1>
+                <option value="%"></option>
+            [% FOREACH b IN board_list %]
+                [% IF board == b.board %]
+                    <option selected>[% b.board %]</option>
+                [% ELSE %]
+                    <option>[% b.board %]</option>
+                [% END %]
+            [% END %]
+            </select>
+            <select name=filetype size=1>
+            [% FOREACH f IN filetypes %]
+                [% IF filetype == f %]
+                    <option selected>[% f %]</option>
+                [% ELSE %]
+                    <option>[% f %]</option>
+                [% END %]
+            [% END %]
+            </select>
+            <select name=order size=1>
+                <option value=0>ASC</option>
+            [% IF order == 1 %]
+                <option selected value=1>DESC</option>
+            [% ELSE %]
+                <option value=1>DESC</option>
+            [% END %]
+            </select>
+            <input type=submit value=Select>
+        </form>
+    </div>
+    <table>
+        <tr>
+        [% FOREACH file IN file_list %]
+            <td>
+                [% file.thumb %]
+                <ul class=postlist>
+                [% FOREACH b IN file.board_list %]
+                    <li>
+                        <a href="?view=board&board_id=[% b.board_id %]">[% b.board %]</a>/<a href="?view=thread&board_id=[% b.board_id %]&thread_id=[% b.thread_id %]">[% b.thread_id %]</a>/<a href="?view=thread&board_id=[% b.board_id %]&thread_id=[% b.thread_id %]#[% b.post_id %]">[% b.post_id %]</a>/
+                        [% b.filename %]
+                    </li>
+                [% END %]
+                </ul>
+            </td>
+            [% UNLESS loop.count mod 5 %]
+                </tr><tr>
+            [% END %]
+        [% END %]
+        </tr>
+    </table>
+    <div class=margin>
+    [% IF page %]
+        <a href="?view=show_files&board=[% board %]&filetype=[% filetype %]&page=[% prev_page %]&order=[% order %]">PREV</a>
+    [% END %]
+    [% FOREACH p IN page_list %]
+        <a href="?view=show_files&board=[% board %]&filetype=[% filetype %]&page=[% p %]&order=[% order %]">[% p %]</a>
+    [% END %]
+    [% IF page < (max_pages - 1) %]
+        <a href="?view=show_files&board=[% board %]&filetype=[% filetype %]&page=[% next_page %]&order=[% order %]">NEXT</a>
+    [% END %]
+        <p>Total: [% total %] ([% time %] seconds)</p>
+    </div>

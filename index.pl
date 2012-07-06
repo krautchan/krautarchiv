@@ -7,11 +7,16 @@ use warnings;
 use CGI;
 use CGI::Carp qw(warningsToBrowser fatalsToBrowser);
 use POSIX qw(ceil);
+use Template;
+use Time::HiRes qw(time);
 
 require "domain/Database.pm";
 
 my $db = Database->new("data/data.db");
 my $cgi = new CGI;
+my $template = Template->new({ INCLUDE_PATH => 'view',
+                               POST_CHOMP   => 0});
+
 my $file_folder = "img";
 my $thumb_folder = "thumb";
 
@@ -60,14 +65,12 @@ sub delete_tag {
 }
 
 sub empty_index {
-    require "view/_index.pm";
     my $vars = {menu => menu_()};
-    _index::content($vars);
+    
+    $template->process('index.tmpl', $vars)
 }
 
 sub board {
-    require "view/_board.pm";
-
     my $board_id = $cgi->param('board_id') || undef;
     my $order = $cgi->param('order') || 0;
     my $page = $cgi->param('page') || 0;
@@ -82,9 +85,13 @@ sub board {
     my $vars = {
         menu => menu_(),
         page => $cgi->escapeHTML($page),
+        prev_page => $page - 1,
+        next_page => $page + 1,
         order => $cgi->escapeHTML($order),
         board_id => $cgi->escapeHTML($board_id)
     };
+    
+    my $start_time = time();
     my $thread_list = $db->get_thread_list($board_id,$order,$limit,$offset);
     
     foreach(@$thread_list) {
@@ -96,15 +103,23 @@ sub board {
             $_->{thumb} = media_file_($_->{file_id},$_->{path});
         }
     }
+    
     $vars->{total_threads} = $db->get_total_threads($board_id);
-    $vars->{max_pages} = ceil($vars->{total_threads} / $limit);
+    my $time = sprintf("%.4f", time() - $start_time);
+    
+    my $max_pages = ceil($vars->{total_threads} / $limit);
+    my @page_list = (0..($max_pages - 1));
+    
+    
+    $vars->{max_pages} = $max_pages;
+    $vars->{page_list} = \@page_list;
     $vars->{thread_list} = $thread_list;
-    _board::content($vars);
+    $vars->{time} = $time;
+    
+    $template->process('board.tmpl', $vars) || print $template->error();;
 }
 
 sub thread {
-    require "view/_thread.pm";
-
     my $board_id = $cgi->param('board_id') || undef;
     my $thread_id = $cgi->param('thread_id') || undef;
 
@@ -112,7 +127,8 @@ sub thread {
         empty_index();
         return;
     }
-
+    
+    my $start_time = time();
     my $post_list = $db->get_thread($board_id,$thread_id);
 
     foreach(@$post_list) {
@@ -122,28 +138,35 @@ sub thread {
         }
     }
 
-    my $vars = { menu => menu_(), post_list => $post_list };
-    _thread::content($vars);
+    my $time = sprintf("%.4f", time() - $start_time);
+
+    my $vars = { menu => menu_(), post_list => $post_list};
+    $vars->{time} = $time;
+    
+    $template->process('thread.tmpl', $vars) || print $template->error();
 }
 
 sub tags {
-    require "view/_tags.pm";
     my $letter = $cgi->param("letter") || 'a';
     
     my $vars = { menu => menu_(), letter => $letter };
+    
+    my $start_time = time();
     $vars->{tag_list} = $db->get_tag_list_by_letter($letter);
-
-    _tags::content($vars);
+    my $time = sprintf("%.4f", time() - $start_time);
+    $vars->{time} = $time;
+    
+    $template->process('tags.tmpl', $vars) || print $template->error();
 }
 
 sub tag {
-    require "view/_tag.pm";
     my $tags_rowid = $cgi->param("tags_rowid");
     my $page = $cgi->param("page");
 
     my $limit = 20;
     my $offset = $page * $limit;
 
+    my $start_time = time();
     my $file_list = $db->get_file_list_by_tag($tags_rowid,$limit,$offset);
     
     foreach(@$file_list) {
@@ -152,46 +175,58 @@ sub tag {
     }
 
     my $total_count = $db->get_file_list_by_tag_count($tags_rowid);
+    my $time = sprintf("%.4f", time() - $start_time);
 
     my $vars = {menu => menu_(), file_list => $file_list};
     $vars->{page} = $cgi->escapeHTML($page);
-    $vars->{max_pages} = ceil($total_count / $limit);
+    $vars->{prev_page} = $page - 1;
+    $vars->{next_page} = $page + 1;
+    my $max_pages = ceil($total_count / $limit);
+    my @page_list = 0..($max_pages - 1);
+    $vars->{max_pages} = $max_pages;
+    $vars->{page_list} = \@page_list;
     $vars->{tags_rowid} = $cgi->escapeHTML($tags_rowid);
-
-    _tag::content($vars);
+    $vars->{total} = $total_count;
+    $vars->{time} = $time;
+    
+    $template->process('tag.tmpl', $vars) || print $template->error();
 }
 
 sub top_ten {
     my $type = $cgi->param('type');
 
     if($type eq 'files') {
-        require "view/_top_ten_files.pm";
+        my $start_time = time();
         
         my $file_list = $db->get_popular_files_list(10);
         foreach(@{$file_list}) {
             $_->{thumb} = media_file_($_->{file_id},$_->{path});
             $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
         }
+        my $time = sprintf("%.4f", time() - $start_time);
         
         my $vars = { menu => menu_() };
         $vars->{file_list} = $file_list;
+        $vars->{time} = $time;
         
-        _top_ten_files::content($vars);
+        $template->process('top_ten_files.tmpl', $vars) || print $template->error();
     } elsif($type eq 'subjects') {
-        require "view/_top_ten_subjects.pm";
-        
         my $vars = { menu => menu_()};
+        
+        my $start_time = time();
         my $subjects_list = $db->get_popular_subjects_list(10);
+        my $time = sprintf("%.4f", time() - $start_time);
+        
         $vars->{subjects_list} = $subjects_list;
+        $vars->{time} = $time;
 
-        _top_ten_subjects::content($vars);
+        $template->process('top_ten_subjects.tmpl', $vars) || print $template->error();
     } else {
         empty_index();
     }
 }
 
 sub show_files {
-    require "view/_show_files.pm";
     my $board = $cgi->param('board') || "%";
     my $filetype = $cgi->param('filetype') || "";
     my $order = $cgi->param('order') || 0;
@@ -209,6 +244,8 @@ sub show_files {
         $limit = 1;
     }
     my $offset = $page * $limit;
+    
+    my $start_time = time();
     my $file_list = $db->get_file_list($filetype,$board,$limit,$offset,$order);
     my $total_count = $db->get_file_list_count($filetype,$board);
 
@@ -216,6 +253,7 @@ sub show_files {
         $_->{thumb} = media_file_($_->{file_id},$_->{path});
         $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
     }
+    my $time = sprintf("%.4f", time() - $start_time);
 
     my $vars = { menu => menu_() };
     $vars->{board_list} = $db->get_board_list();
@@ -224,16 +262,21 @@ sub show_files {
     $vars->{filetypes} = \@filetypes;
     $vars->{order} = $cgi->escapeHTML($order);
     $vars->{page} = $cgi->escapeHTML($page);
+    $vars->{prev_page} = $page - 1;
+    $vars->{next_page} = $page + 1;
     $vars->{file_list} = $file_list;
     $vars->{total} = $total_count;
-    $vars->{max_pages} = ceil($total_count / $limit);
+    my $max_pages = ceil($total_count / $limit);
+    my @page_list = 0..($max_pages - 1);
+    $vars->{max_pages} = $max_pages;
+    $vars->{page_list} = \@page_list;
+    $vars->{time} = $time;
     
-    _show_files::content($vars);
+    $template->process('show_files.tmpl', $vars) || print $template->error();
+    #_show_files::content($vars);
 }
 
 sub show_file {
-    require "view/_show_file.pm";
-    
     my $file_id = $cgi->param('file_id') || undef;
 
     unless($file_id) {
@@ -253,12 +296,10 @@ sub show_file {
     $vars->{board_list} = $db->get_file_info_by_file_id($file_id);
     $vars->{tag_list} = $db->get_tag_list_by_file_id($file_id);
 
-    _show_file::content($vars);
+    $template->process('show_file.tmpl', $vars) || print $template->error();
 }
 
 sub menu_ {
-    require "view/_menu.pm";
-    
     my $vars = {};
     my $board_list = $db->get_board_list;
 
@@ -270,7 +311,11 @@ sub menu_ {
     $vars->{total_posts} = $db->get_total_posts;
     $vars->{total_files} = $db->get_total_files;
     
-    return _menu::content($vars);
+    my $menu = '';
+    
+    $template->process('menu.tmpl', $vars, \$menu);
+    
+    return $menu;
 }
 
 sub media_file_ {

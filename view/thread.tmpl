@@ -1,0 +1,25 @@
+[% menu %]
+[% FOREACH post IN post_list %]
+    <table class=post>
+        <tr class=head>
+            <td>
+                [% post.post_id %] | <span class=subject>[% post.subject %]</span> | <span class=username>[% post.user %]</span> | [% post.date %]
+            </td>
+        </tr>
+        <tr>
+            <td>
+            [% FOREACH file IN post.file_list %]
+                [% file.thumb %]
+            [% END %]
+            </td>
+        </tr>
+        <tr>
+            <td>
+                [% post.text %]
+            </td>
+        </tr>
+    </table>
+[% END %]
+    <div class=margin>
+        ([% time %] seconds)
+    </div>

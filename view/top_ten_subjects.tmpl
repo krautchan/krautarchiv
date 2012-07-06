@@ -1,0 +1,13 @@
+[% menu %]
+    <table>
+        <tr>
+            <td>
+            [% FOREACH subject IN subjects_list %]
+                <span class=subject>[% subject.subject %]</span> Used [% subject.count %] times<br />
+            [% END%]
+            </td>
+        </tr>
+    <table>
+    <div class=margin>
+        ([% time %] seconds)
+    </div>

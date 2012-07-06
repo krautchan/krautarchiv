@@ -1,0 +1,33 @@
+[% menu %]
+    <div class=center>
+        <a href="[% file.path %]"><img class=fileview src="[% file.path %]" /></a>
+        <ul class=postlist>
+        [% FOREACH post IN board_list %]
+            <li>
+                <a href="?view=board&board_id=[% post.board_id %]">[% post.board %]</a>/
+                <a href="?view=thread&board_id=[% post.board_id %]&thread_id=[% post.thread_id %]">[% post.thread_id %]</a>/
+                <a href="?view=thread&board_id=[% post.board_id %]&thread_id=[% post.thread_id %]#[% post.post_id %]">[% post.post_id %]</a>/ 
+                [% post.filename %]
+            </li>
+        [% END %]
+        </ul>
+        <p>
+            Tags:
+            [% IF tag_list %]
+            <form action="" method=post>
+                <input name=action type=hidden value=delete_tag />
+                <input name=file_id type=hidden value="[% file.file_id %]" />
+                [% FOREACH tag IN tag_list %]
+                <input type=checkbox name=tags_rowid value="[% tag.tags_rowid %]" />[% tag.tag %]
+                [% END %]
+                <input type=submit value="Delete Tag(s)" />
+            </form>
+            [% END %]
+        </p>
+        <form action="" method=post>
+            <input name=action type=hidden value=add_tag />
+            <input name=file_id type=hidden value="[% file.file_id %]" />
+            <input name=tag type=text size=15 maxlength=100 />
+            <input type=submit value="Add Tag" />
+        </form>
+    </div>

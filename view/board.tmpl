@@ -1,0 +1,45 @@
+[% menu %]
+    <div class="margin">
+        Sort: <a href="?view=board&board_id=[% board_id %]&order=0">Newest</a>
+        <a href="?view=board&board_id=[% board_id %]&order=1">Most Comments</a>
+    </div>
+    [% FOREACH thread IN thread_list %]
+    <table class=thread>
+        <tr class=head>
+            <td>
+                <a href="?view=thread&thread_id=[% thread.thread_id %]&board_id=[% thread.board_id %]">[% thread.thread_id %]</a> | 
+                <span class=subject>[% thread.subject %]</span> | 
+                <span class=username>[% thread.user %]</span> | [% thread.date %]
+            </td>
+        </tr>
+        <tr>
+            <td>
+            [% FOREACH file IN thread.file_list %]
+                [% file.thumb %]
+            [% END %]
+            </td>
+        </tr>
+        <tr>
+            <td>
+                [% thread.text %]
+                <p class=count>
+                    [% thread.total_answers %] Post(s)
+                </p>
+            </td>
+        </tr>
+    </table>
+    [% END %]
+    <div class=margin>
+    [% IF page %]
+        <a href="?view=board&board_id=[% board_id %]&page=[% prev_page %]&order=[% order %]">PREV</a>&nbsp;
+    [% END %]
+    [% FOREACH p IN page_list %]
+        <a href="?view=board&board_id=[% board_id %]&page=[% p %]&order=[% order %]">[% p %]</a>&nbsp;
+    [% END %]
+    [% IF page < (max_pages - 1) %]
+        <a href="?view=board&board_id=[% board_id %]&page=[% next_page %]&order=[% order %]">NEXT</a>
+    [% END %]
+        <p>
+            [% total_threads %] Threads([% time %] seconds)
+        </p>
+    </div>
