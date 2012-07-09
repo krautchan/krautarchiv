@@ -4,17 +4,20 @@ use strict;
 no strict "refs";
 use warnings;
 
+use lib ("./modules","./domain");
+
 use CGI;
 use CGI::Carp qw(warningsToBrowser fatalsToBrowser);
-use POSIX qw(ceil);
+use POSIX;
 use Template;
-use Time::HiRes qw(time);
+use Time::HiRes;
 
-require "domain/Database.pm";
+use Database;
+use Utilities;
 
 my $db = Database->new("data/data.db");
 my $cgi = new CGI;
-my $template = Template->new({ INCLUDE_PATH => 'view',
+my $template = Template->new({ INCLUDE_PATH => './view',
                                POST_CHOMP   => 0});
 
 my $file_folder = "img";
@@ -65,9 +68,8 @@ sub delete_tag {
 }
 
 sub empty_index {
-    my $vars = {menu => menu_()};
-    
-    $template->process('index.tmpl', $vars)
+    menu();   
+    $template->process('index.tmpl');
 }
 
 sub board {
@@ -83,7 +85,6 @@ sub board {
         return;
     }
     my $vars = {
-        menu => menu_(),
         page => $cgi->escapeHTML($page),
         prev_page => $page - 1,
         next_page => $page + 1,
@@ -91,7 +92,7 @@ sub board {
         board_id => $cgi->escapeHTML($board_id)
     };
     
-    my $start_time = time();
+    my $start_time = Time::HiRes::time();
     my $thread_list = $db->get_thread_list($board_id,$order,$limit,$offset);
     
     foreach(@$thread_list) {
@@ -100,12 +101,12 @@ sub board {
         $_->{total_answers} = $db->get_total_posts($_->{thread_id});
         $_->{file_list} = $db->get_file_list_by_post($_->{posts_rowid});
         foreach(@{$_->{file_list}}) {
-            $_->{thumb} = media_file_($_->{file_id},$_->{path});
+            $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
         }
     }
     
     $vars->{total_threads} = $db->get_total_threads($board_id);
-    my $time = sprintf("%.4f", time() - $start_time);
+    my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
     
     my $max_pages = ceil($vars->{total_threads} / $limit);
     my @page_list = (0..($max_pages - 1));
@@ -116,6 +117,7 @@ sub board {
     $vars->{thread_list} = $thread_list;
     $vars->{time} = $time;
     
+    menu();
     $template->process('board.tmpl', $vars) || print $template->error();;
 }
 
@@ -128,34 +130,36 @@ sub thread {
         return;
     }
     
-    my $start_time = time();
+    my $start_time = Time::HiRes::time();
     my $post_list = $db->get_thread($board_id,$thread_id);
 
     foreach(@$post_list) {
         $_->{file_list} = $db->get_file_list_by_post($_->{posts_rowid});
         foreach(@{$_->{file_list}}) {
-            $_->{thumb} = media_file_($_->{file_id},$_->{path});
+            $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
         }
     }
 
-    my $time = sprintf("%.4f", time() - $start_time);
+    my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
 
-    my $vars = { menu => menu_(), post_list => $post_list};
+    my $vars = {post_list => $post_list};
     $vars->{time} = $time;
     
+    menu();
     $template->process('thread.tmpl', $vars) || print $template->error();
 }
 
 sub tags {
     my $letter = $cgi->param("letter") || 'a';
     
-    my $vars = { menu => menu_(), letter => $letter };
+    my $vars = {letter => $letter };
     
-    my $start_time = time();
+    my $start_time = Time::HiRes::time();
     $vars->{tag_list} = $db->get_tag_list_by_letter($letter);
-    my $time = sprintf("%.4f", time() - $start_time);
+    my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
     $vars->{time} = $time;
     
+    menu();
     $template->process('tags.tmpl', $vars) || print $template->error();
 }
 
@@ -166,18 +170,18 @@ sub tag {
     my $limit = 20;
     my $offset = $page * $limit;
 
-    my $start_time = time();
+    my $start_time = Time::HiRes::time();
     my $file_list = $db->get_file_list_by_tag($tags_rowid,$limit,$offset);
     
     foreach(@$file_list) {
-        $_->{thumb} = media_file_($_->{file_id},$_->{path});
+        $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
         $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
     }
 
     my $total_count = $db->get_file_list_by_tag_count($tags_rowid);
-    my $time = sprintf("%.4f", time() - $start_time);
+    my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
 
-    my $vars = {menu => menu_(), file_list => $file_list};
+    my $vars = {file_list => $file_list};
     $vars->{page} = $cgi->escapeHTML($page);
     $vars->{prev_page} = $page - 1;
     $vars->{next_page} = $page + 1;
@@ -189,6 +193,7 @@ sub tag {
     $vars->{total} = $total_count;
     $vars->{time} = $time;
     
+    menu();
     $template->process('tag.tmpl', $vars) || print $template->error();
 }
 
@@ -207,7 +212,7 @@ sub stats {
         foreach my $file (@{$file_list}) {
             $_->{size} += -s "$file_folder/$file->{path}";
         }
-        $_->{size} = format_bytes_($_->{size});
+        $_->{size} = Utilities::format_bytes($_->{size});
         $_->{files_per_thread} = sprintf("%.2f",$_->{file_count} / $_->{thread_count});
         ($_->{first_post_time},$_->{last_post_time}) = $db->get_post_time_by_board_id($_->{board_id});
         $_->{threads_per_day} = sprintf("%.2f", $_->{thread_count} / (($_->{last_post_time} - $_->{first_post_time}) / 86400));
@@ -216,7 +221,9 @@ sub stats {
         $_->{last_post_time} = localtime($_->{last_post_time} - 7200);
     }
 
-    my $vars = { menu => menu_(), board_list => $board_list };
+    my $vars = { board_list => $board_list };
+
+    menu();
     $template->process('stats.tmpl', $vars) || print $template->error();
 }
 
@@ -224,30 +231,32 @@ sub top_ten {
     my $type = $cgi->param('type');
 
     if($type eq 'files') {
-        my $start_time = time();
+        my $start_time = Time::HiRes::time();
         
         my $file_list = $db->get_popular_files_list(10);
         foreach(@{$file_list}) {
-            $_->{thumb} = media_file_($_->{file_id},$_->{path});
+            $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
             $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
         }
-        my $time = sprintf("%.4f", time() - $start_time);
+        my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
         
-        my $vars = { menu => menu_() };
+        my $vars = {};
         $vars->{file_list} = $file_list;
         $vars->{time} = $time;
         
+        menu();
         $template->process('top_ten_files.tmpl', $vars) || print $template->error();
     } elsif($type eq 'subjects') {
-        my $vars = { menu => menu_()};
+        my $vars = {};
         
-        my $start_time = time();
+        my $start_time = Time::HiRes::time();
         my $subjects_list = $db->get_popular_subjects_list(10);
-        my $time = sprintf("%.4f", time() - $start_time);
+        my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
         
         $vars->{subjects_list} = $subjects_list;
         $vars->{time} = $time;
-
+        
+        menu();
         $template->process('top_ten_subjects.tmpl', $vars) || print $template->error();
     } else {
         empty_index();
@@ -273,17 +282,17 @@ sub show_files {
     }
     my $offset = $page * $limit;
     
-    my $start_time = time();
+    my $start_time = Time::HiRes::time();
     my $file_list = $db->get_file_list($filetype,$board,$limit,$offset,$order);
     my $total_count = $db->get_file_list_count($filetype,$board);
 
     foreach(@$file_list) {
-        $_->{thumb} = media_file_($_->{file_id},$_->{path});
+        $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
         $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
     }
-    my $time = sprintf("%.4f", time() - $start_time);
+    my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
 
-    my $vars = { menu => menu_() };
+    my $vars = {};
     $vars->{board_list} = $db->get_board_list();
     $vars->{board} = $cgi->escapeHTML($board);
     $vars->{filetype} = $cgi->escapeHTML($filetype);
@@ -300,8 +309,8 @@ sub show_files {
     $vars->{page_list} = \@page_list;
     $vars->{time} = $time;
     
+    menu();
     $template->process('show_files.tmpl', $vars) || print $template->error();
-    #_show_files::content($vars);
 }
 
 sub show_file {
@@ -320,14 +329,15 @@ sub show_file {
     }
     
     $file->{path} = "$file_folder/$file->{path}"; 
-    my $vars = {menu => menu_(), file => $file};
+    my $vars = {file => $file};
     $vars->{board_list} = $db->get_file_info_by_file_id($file_id);
     $vars->{tag_list} = $db->get_tag_list_by_file_id($file_id);
 
+    menu();
     $template->process('show_file.tmpl', $vars) || print $template->error();
 }
 
-sub menu_ {
+sub menu {
     my $vars = {};
     my $board_list = $db->get_board_list;
 
@@ -338,72 +348,8 @@ sub menu_ {
     $vars->{board_list} = $board_list;
     $vars->{total_posts} = $db->get_total_posts;
     $vars->{total_files} = $db->get_total_files;
-    
-    my $menu = '';
-    
-    $template->process('menu.tmpl', $vars, \$menu);
-    
-    return $menu;
-}
-
-sub media_file_ {
-    my ($file_id,$path) = @_;
-    $path = "$file_folder/$path";
-
-    if($path =~ /\.(mp3)|(ogg)$/) {
-        return "<audio controls=\"controls\">".
-               "<source src=\"$path\" type=\"audio/mp3\" /></audio>";
-    } elsif($path =~ /\.swf$/) {
-        return "<object data=\"$path\" type=\"application/x-shockwave-flash\">".
-               "<param name=\"movie\" value=\"$path\"></object><br />".
-               "<a href=$path>Click Me</a>";
-    } elsif($path =~ /\.(zip)|(rar)|(torrent)|(psd)$/) {
-        return "<a href=$path>$path</a>";
-    } elsif($path =~ /\.gif$/) {
-        return "<a href=?view=show_file&file_id=$file_id><img src=$path width=200 /></a>";
-    } else {
-        my $thumbnail = thumbnail_($path);
-       return "<a href=?view=show_file&file_id=$file_id><img src=$thumbnail width=200 /></a>";
-    }
-}
-
-sub thumbnail_ {
-    require Image::Imlib2;
-
-    my $path = shift;
-
-    my ($filename) = $path =~ /$file_folder\/(.*)/;
-    my $thumbpath = "$thumb_folder/thumbnail$filename";
-
-    if( -e $thumbpath) {
-        return $thumbpath;
-    }
-
-    my $image = Image::Imlib2->load($path);
-    if($image->width > 200) {
-        mkdir("thumb");
-
-        my $height = int($image->height / ($image->width/200));
-        my $thumb = $image->create_scaled_image(200, $height);
-        $thumb->save($thumbpath);
         
-        return $thumbpath;
-    }
-    return $path;
-}
-
-sub format_bytes_ {
-    my $number = shift;
-    
-    my @unit = ("Byte", "KB", "MB", "GB", "TB", "PB");
-
-    my $count = 0;
-    while($number > 1024) {
-        $number = $number/1024;
-        $count++;
-    }
-
-    return sprintf("%.2f",$number) . " $unit[$count]";
+    $template->process('menu.tmpl', $vars) || print $template->error();
 }
 
 sub AUTOLOAD {
