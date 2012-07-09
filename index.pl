@@ -192,6 +192,34 @@ sub tag {
     $template->process('tag.tmpl', $vars) || print $template->error();
 }
 
+sub stats {
+    my $board_list = $db->get_board_list();
+    
+    foreach(@{$board_list}) {
+        $_->{thread_count} = $db->get_total_threads($_->{board_id});
+        $_->{post_count} = $db->get_total_posts_by_board_id($_->{board_id});
+        $_->{posts_per_thread} = sprintf("%.2f",$_->{post_count}/$_->{thread_count});
+        $_->{file_count} = $db->get_file_list_count("",$_->{board});
+        $_->{text_length} = $db->get_text_length_by_board_id($_->{board_id});
+        my $file_list = $db->get_file_list("",$_->{board},-1,0,0);
+        
+        $_->{size} = 0;
+        foreach my $file (@{$file_list}) {
+            $_->{size} += -s "$file_folder/$file->{path}";
+        }
+        $_->{size} = format_bytes_($_->{size});
+        $_->{files_per_thread} = sprintf("%.2f",$_->{file_count} / $_->{thread_count});
+        ($_->{first_post_time},$_->{last_post_time}) = $db->get_post_time_by_board_id($_->{board_id});
+        $_->{threads_per_day} = sprintf("%.2f", $_->{thread_count} / (($_->{last_post_time} - $_->{first_post_time}) / 86400));
+        $_->{posts_per_hour} = sprintf("%.2f", $_->{post_count} / (($_->{last_post_time} - $_->{first_post_time}) / 3600));
+        $_->{first_post_time} = localtime($_->{first_post_time} - 7200);
+        $_->{last_post_time} = localtime($_->{last_post_time} - 7200);
+    }
+
+    my $vars = { menu => menu_(), board_list => $board_list };
+    $template->process('stats.tmpl', $vars) || print $template->error();
+}
+
 sub top_ten {
     my $type = $cgi->param('type');
 
@@ -362,6 +390,20 @@ sub thumbnail_ {
         return $thumbpath;
     }
     return $path;
+}
+
+sub format_bytes_ {
+    my $number = shift;
+    
+    my @unit = ("Byte", "KB", "MB", "GB", "TB", "PB");
+
+    my $count = 0;
+    while($number > 1024) {
+        $number = $number/1024;
+        $count++;
+    }
+
+    return sprintf("%.2f",$number) . " $unit[$count]";
 }
 
 sub AUTOLOAD {

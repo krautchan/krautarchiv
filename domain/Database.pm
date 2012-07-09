@@ -61,19 +61,18 @@ sub add_post {
     my $self = shift;
     my $threads_rowid = shift || croak("need threads_rowid");
     my $post_id = shift || croak("need post_id");
-    my $subject = shift || "";
-    my $user = shift || "";
-    my $date = shift || "";
-    my $sage = shift || 0;
-    my $text = shift|| "";
+    my $subject = shift;
+    my $user = shift;
+    my $date = shift;
+    my $text = shift;
 
-    my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `posts`(`threads_rowid`,`post_id`,`subject`,`user`,`date`,`sage`,`text`)
-                                       VALUES(?,?,?,?,?,?,?)");
+    my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `posts`(`threads_rowid`,`post_id`,`subject`,`user`,`date`,`text`)
+                                       VALUES(?,?,?,?,?,?)");
 
     my $sth_2 = $self->{dbh}->prepare("SELECT `posts_rowid` FROM `posts`
                                        WHERE `threads_rowid` = ? AND `post_id` = ?");
 
-    $sth_1->execute($threads_rowid, $post_id, $subject, $user, $date, $sage, $text);
+    $sth_1->execute($threads_rowid, $post_id, $subject, $user, $date, $text);
     $sth_2->execute($threads_rowid,$post_id);
 
     my ($posts_rowid) = $sth_2->fetchrow;
@@ -146,7 +145,7 @@ sub get_thread {
     my $board_id = shift || croak("need board_id");
     my $thread_id = shift || croak("need thread_id");
 
-    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`post_id`,`subject`,`user`,`date`,`sage`,`text`
+    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`post_id`,`subject`,`user`,`date`,`text`
                                            FROM `posts`
                                            JOIN `threads` USING(`threads_rowid`)
                                            WHERE `board_id` = ? AND `thread_id` = ?
@@ -155,13 +154,12 @@ sub get_thread {
     $sth->execute($board_id, $thread_id);
 
     my @post_list = ();
-    while(my ($posts_rowid,$post_id,$subject,$user,$date,$sage,$text) = $sth->fetchrow) {
+    while(my ($posts_rowid,$post_id,$subject,$user,$date,$text) = $sth->fetchrow) {
         push(@post_list, { posts_rowid => $posts_rowid,
                            post_id => $post_id,
                            subject => $subject,
                            user => $user,
                            date => $date,
-                           sage => $sage,
                            text => $text });
     }
 
@@ -173,20 +171,19 @@ sub get_post {
     my $board_id = shift || croak("need board_id");
     my $post_id = shift || croak("need post_id");
 
-    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`thread_id`,`subject`,`user`,`date`,`sage`,`text` FROM `posts`
+    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`thread_id`,`subject`,`user`,`date`,`text` FROM `posts`
                                      JOIN `threads` USING(`threads_rowid`)
                                      WHERE `board_id` = ? AND `post_id` = ?");
 
     $sth->execute($board_id, $post_id);
 
-    if(my ($posts_rowid,$thread_id,$subject,$user,$date,$sage,$text) = $sth->fetchrow) {
+    if(my ($posts_rowid,$thread_id,$subject,$user,$date,$text) = $sth->fetchrow) {
         return {
             posts_rowid => $posts_rowid,
             thread_id => $thread_id,
             subject => $subject,
             user => $user,
             date => $date,
-            sage => $sage,
             text => $text
         }
     } else {
@@ -444,6 +441,21 @@ sub get_tag_list_by_letter {
     return \@tag_list;
 }
 
+sub get_post_time_by_board_id {
+    my $self = shift;
+    my $board_id = shift || croak("need board id");
+
+    my $sth = $self->{dbh}->prepare("SELECT strftime('%s',min(`date`)),strftime('%s',max(`date`)) FROM `posts`
+                                     JOIN `threads` USING(`threads_rowid`)
+                                     WHERE `board_id` = ?");
+    $sth->execute($board_id);
+    if(my ($min,$max) = $sth->fetchrow) {
+        return ($min, $max);
+    } else {
+        return ();
+    }
+}
+
 sub get_popular_subjects_list {
     my $self = shift;
     my $limit = shift || 10;
@@ -486,6 +498,20 @@ sub get_popular_files_list {
     return \@popular_file_list;
 }
 
+sub get_text_length_by_board_id {
+    my $self = shift;
+    my $board_id = shift || croak("need board_id");
+
+    my $sth = $self->{dbh}->prepare("SELECT length(group_concat(`text`,\"\")) FROM `posts` JOIN `threads` USING(`threads_rowid`) WHERE `board_id` = ?") || print("error");
+    $sth->execute($board_id);
+
+    if(my ($text_length) = $sth->fetchrow) {
+        return $text_length
+    } else {
+        return undef;
+    }
+}
+
 sub get_total_files {
     my $self = shift;
 
@@ -495,6 +521,22 @@ sub get_total_files {
     my ($count) = $sth->fetchrow;
 
     return $count;
+}
+
+sub get_total_posts_by_board_id {
+    my $self = shift;
+    my $board_id = shift || croak("need board id");
+
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM `posts`
+                                     JOIN `threads` USING(`threads_rowid`)
+                                     WHERE `board_id` = ?");
+    
+    $sth->execute($board_id);
+    if(my ($post_count) = $sth->fetchrow) {
+        return $post_count;
+    } else {
+        return undef;
+    }
 }
 
 sub get_total_posts {
@@ -573,7 +615,6 @@ sub setup {
                                      `subject` TEXT,
                                      `user` TEXT,
                                      `date` TEXT,
-                                     `sage` BOOLEAN,
                                      `text` TEXT,
                                       UNIQUE(`threads_rowid`,`post_id`),
                                       FOREIGN KEY(`threads_rowid`) REFERENCES `threads`(`threads_rowid`)

@@ -112,7 +112,7 @@ sub save_thread {
         print "$i/" . scalar(@$thread) . " Board: $board; Thread: $thread_id; Post: $_->{id};";
         unless($db->get_post($board_id, $_->{id})) {
             my $posts_rowid = $db->add_post($threads_rowid, $_->{id}, $_->{subject},
-                                            $_->{name}, $_->{date}, $_->{sage}, $_->{text});
+                                            $_->{name}, $_->{date}, $_->{text});
             print " - saved\n";
             save_files($posts_rowid,$_);
         } else {
@@ -123,14 +123,9 @@ sub save_thread {
 }
 
 sub parse_post_header {
-    my ($txt, $post) = @_;
-    ($post->{"id"}, $post->{"subject"}, $post->{"name"}, $post->{"date"}) = $txt =~ /<input name="post_(\d*)" value="delete" type="checkbox"> ?.*? ?<span class="postsubject">(.*?)<\/span> <span class="postername">(.*?)<\/span> <span class="postdate">(.*?)<\/span>/; 
-    
-    if($txt =~ /<span class="sage">S&Auml;GE!<\/span>/) {
-        $post->{sage} = 1;
-    }
-    
-    return $post;
+    my ($txt, $post_ref) = @_;
+    ($post_ref->{"id"}, $post_ref->{"subject"}, $post_ref->{"name"}, $post_ref->{"date"}) = $txt =~ /<input name="post_(\d*)" value="delete" type="checkbox"> ?.*? ?<span class="postsubject">(.*?)<\/span> <span class="postername">(.*?)<\/span> <span class="postdate">(.*?)<\/span>/; 
+    return $post_ref;
 }
 
 sub parse_post_files {

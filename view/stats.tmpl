@@ -1,0 +1,84 @@
+[% menu %]
+    <table>
+        <thead>
+            <tr>
+                <th>
+                    Board
+                </th>
+                <th>
+                    Threads
+                </th>
+                <th>
+                    Posts
+                </th>
+                <th>
+                    Posts/Thread
+                </th>
+                <th>
+                    Text Length
+                </th>
+                <th>
+                    Files
+                </th>
+                <th>
+                    File size
+                </th>
+                <th>
+                    Files/Thread
+                </th>
+                <th>
+                    First Post
+                </th>
+                <th>
+                    Last Post
+                </th>
+                <th>
+                    Threads/Day
+                </th>
+                <th>
+                    Posts/Hour
+                </th>
+            </tr>
+        </thead>
+    [% FOREACH b IN board_list %]
+        <tr>
+            <td>
+                <a href="?view=board&board_id=[% b.board_id %]">[% b.board %]</a>
+            </td>
+            <td>
+                [% b.thread_count %]
+            </td>
+            <td>
+                [% b.post_count %]
+            </td>
+            <td>
+                [% b.posts_per_thread %]
+            </td>
+            <td>
+                [% b.text_length %]
+            </td>
+
+            <td>
+                [% b.file_count %]
+            </td>
+            <td>
+                [% b.size %]
+            </td>
+            <td>
+                [% b.files_per_thread %]
+            </td>
+            <td>
+                [% b.first_post_time %]
+            </td>
+            <td>
+                [% b.last_post_time %]
+            </td>
+            <td>
+                [% b.threads_per_day %]
+            </td>
+            <td>
+                [% b.posts_per_hour %]
+            </td>
+        </tr>
+    [% END %]
+    </table>
