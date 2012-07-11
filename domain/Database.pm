@@ -140,6 +140,34 @@ sub add_tag_to_file {
     $self->{dbh}->commit;
 }
 
+sub get_board {
+    my $self = shift;
+    my $board_id = shift || croak("need board_id");
+
+    my $sth = $self->{dbh}->prepare("SELECT `board` FROM `boards` WHERE `board_id` = ?");
+    $sth->execute($board_id);
+
+    if(my ($board) = $sth->fetchrow) {
+        return $board;
+    } else {
+        return undef;
+    }
+}
+
+sub get_board_id {
+    my $self = shift;
+    my $board = shift || croak("need board");
+
+    my $sth = $self->{dbh}->prepare("SELECT `board_id` FROM `boards` WHERE `board` = ?");
+    $sth->execute($board);
+
+    if(my ($board_id) = $sth->fetchrow) {
+        return $board_id;
+    } else {
+        return undef;
+    }
+}
+
 sub get_thread {
     my $self = shift;
     my $board_id = shift || croak("need board_id");
@@ -456,6 +484,32 @@ sub get_post_time_by_board_id {
     }
 }
 
+sub get_post_count_by_time_interval {
+    my $self = shift;
+    my $board_id = shift || croak("need board_id");
+    my $start_time = shift || croak("need start_time");
+    my $stop_time = shift || croak("need stop_time");
+    my $interval = shift || croak("need interval");
+
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM `posts`
+                                     JOIN `threads` USING(`threads_rowid`)
+                                     WHERE `board_id` = ?
+                                     AND ? <= strftime(\"%s\",`date`)
+                                     AND strftime(\"%s\",`date`) < ?
+                                     ORDER BY `date`");
+
+    my  @post_count = ();
+    for(my $i = $start_time; $i <= $stop_time; $i += $interval) {
+        $sth->execute($board_id, $i, $i + $interval);
+        my ($count) = $sth->fetchrow;
+
+        push(@post_count, {count => $count, time => $i});
+        print("$i/$stop_time $count\n");
+    }
+
+    return \@post_count;
+}
+
 sub get_popular_subjects_list {
     my $self = shift;
     my $limit = shift || 10;
@@ -498,11 +552,31 @@ sub get_popular_files_list {
     return \@popular_file_list;
 }
 
+sub get_first_post_time_by_board_id {
+    my $self = shift;
+    my $board_id = shift || croak("need board_id");
+
+    my $sth = $self->{dbh}->prepare("SELECT strftime(\"%s\",`date`) FROM `posts`
+                                     JOIN `threads` USING(`threads_rowid`)
+                                     WHERE `board_id` = ? ORDER BY `post_id`
+                                     LIMIT 1");
+
+    $sth->execute($board_id);
+
+    if(my ($time) = $sth->fetchrow) {
+        return $time;
+    } else {
+        return undef;
+    }
+}
+
 sub get_text_length_by_board_id {
     my $self = shift;
     my $board_id = shift || croak("need board_id");
 
-    my $sth = $self->{dbh}->prepare("SELECT length(group_concat(`text`,\"\")) FROM `posts` JOIN `threads` USING(`threads_rowid`) WHERE `board_id` = ?") || print("error");
+    my $sth = $self->{dbh}->prepare("SELECT length(group_concat(`text`,\"\")) FROM `posts`
+                                     JOIN `threads` USING(`threads_rowid`)
+                                     WHERE `board_id` = ?");
     $sth->execute($board_id);
 
     if(my ($text_length) = $sth->fetchrow) {
@@ -575,6 +649,18 @@ sub get_total_threads {
     my ($count) = $sth->fetchrow;
 
     return $count;
+}
+
+sub get_current_time {
+    my $self = shift;
+
+    my $sth = $self->{dbh}->prepare("SELECT strftime(\"%s\",\"now\")");
+
+    $sth->execute();
+
+    my ($time) = $sth->fetchrow;
+
+    return $time;
 }
 
 sub delete_tag {
@@ -665,6 +751,10 @@ sub setup {
                   WHERE NOT EXISTS (SELECT * FROM `post_files`
                                     WHERE `files`.file_id = `post_files`.`file_id`);
               END");
+    
+    $dbh->do("CREATE INDEX IF NOT EXISTS `posts_index` ON `posts` (`threads_rowid`,`post_id`,`date`)");
+
+    $dbh->do("CREATE INDEX IF NOT EXISTS `post_files_index` ON `post_files` (`file_id`,`posts_rowid`,`filename`)");
 
     $dbh->commit;
 }

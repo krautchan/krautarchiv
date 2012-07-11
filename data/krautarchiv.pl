@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl:w
 
 use strict;
 use warnings;
@@ -37,7 +37,39 @@ sub main {
                     save_thread(parse_thread($thread,$_),$_);
                 }
             }
+            update_rrd($_);
         }
+    }
+}
+
+sub update_rrd {
+    my $board = shift;
+    
+    my $board_id = $db->get_board_id($board);
+
+    my $last_update = 0;
+    
+    if( -e "$board.rrd") {
+        $last_update = `rrdtool last $board.rrd`;
+        $last_update =~ s/\s//g;
+    } else {
+        $last_update = $db->get_first_post_time_by_board_id($board_id);
+        `rrdtool create $board.rrd -b $last_update --step 300 \\
+         DS:posts:GAUGE:300:0:1000 \\
+         RRA:AVERAGE:0.5:1:288 \\
+         RRA:AVERAGE:0.5:1:2016 \\
+         RRA:AVERAGE:0.5:1:8064 \\
+         RRA:AVERAGE:0.5:1:96768`;
+    }
+
+    $last_update += 300;
+
+    my $now = $db->get_current_time();
+    my $post_count = $db->get_post_count_by_time_interval($board_id,$last_update,$now,300);
+
+    foreach(@{$post_count}) {
+        `rrdtool update $board.rrd $_->{time}:$_->{count}`;
+        print("Board: $board; Time: $_->{time}/$now $_->{count}\n");
     }
 }
 

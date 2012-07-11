@@ -15,13 +15,15 @@ use Time::HiRes;
 use Database;
 use Utilities;
 
-my $db = Database->new("data/data.db");
-my $cgi = new CGI;
-my $template = Template->new({ INCLUDE_PATH => './view',
-                               POST_CHOMP   => 0});
-
 my $file_folder = "img";
 my $thumb_folder = "thumb";
+my $data_folder = "data";
+
+my $db = Database->new("$data_folder/data.db");
+my $cgi = new CGI;
+my $template = Template->new({ INCLUDE_PATH => './view',
+                               POST_CHOMP   => 1,
+                               TRIM => 0});
 
 main();
 
@@ -225,6 +227,21 @@ sub stats {
 
     menu();
     $template->process('stats.tmpl', $vars) || print $template->error();
+}
+
+sub graph {
+    my $board_id = $cgi->param('board_id');
+
+    my $board = $db->get_board($board_id);
+
+    unless($board) {
+        empty_index();    
+    }
+    
+    my $vars = {graph => Utilities::create_graph($board,$file_folder,$data_folder)};
+
+    menu();
+    $template->process('graph.tmpl', $vars) || print $template->error();
 }
 
 sub top_ten {

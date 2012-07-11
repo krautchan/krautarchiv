@@ -37,6 +37,9 @@
                 <th>
                     Posts/Hour
                 </th>
+                <th>
+                    Graph
+                </th>
             </tr>
         </thead>
     [% FOREACH b IN board_list %]
@@ -77,6 +80,9 @@
             </td>
             <td>
                 [% b.posts_per_hour %]
+            </td>
+            <td>
+                <a href="?view=graph&board_id=[% b.board_id %]">Click</a>
             </td>
         </tr>
     [% END %]
