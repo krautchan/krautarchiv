@@ -66,12 +66,13 @@ sub create_graph {
     my $last = `rrdtool last $data_folder/$board.rrd`;
     $last =~ s/\s//g;
 
-    `rrdtool graph $file_folder/${board}_day.png -a PNG -t "/${board}/ Posts/Day" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i \\
+    `rrdtool graph $file_folder/${board}_day.svg -a SVG -t "/${board}/ Posts/Day" \\
+     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
      -v "Posts/5 Min" \\
      --alt-y-grid --end $last --start end-1d \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 \\
+     --x-grid MINUTE:10:HOUR:1:MINUTE:120:0:%R \\
+     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
      DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
      VDEF:avg=p,AVERAGE \\
      VDEF:min=p,MINIMUM \\
@@ -82,12 +83,12 @@ sub create_graph {
      GPRINT:avg:"Average %4.2lf Posts\\r" \\
      GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
 
-    `rrdtool graph $file_folder/${board}_week.png -a PNG -t "/${board}/ Posts/Week" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i \\
+    `rrdtool graph $file_folder/${board}_week.svg -a SVG -t "/${board}/ Posts/Week" \\
+     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
      -v "Posts/5 Min" \\
      --alt-y-grid --end $last --start end-1w \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 \\
+     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
      DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
      VDEF:avg=p,AVERAGE \\
      VDEF:min=p,MINIMUM \\
@@ -98,12 +99,12 @@ sub create_graph {
      GPRINT:avg:"Average %4.2lf Posts\\r" \\
      GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
 
-    `rrdtool graph $file_folder/${board}_month.png -a PNG -t "/${board}/ Posts/Month" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i \\
+    `rrdtool graph $file_folder/${board}_month.svg -a SVG -t "/${board}/ Posts/Month" \\
+     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
      -v "Posts/5 Min" \\
      --alt-y-grid --end $last --start end-1month \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 \\
+     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
      DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
      VDEF:avg=p,AVERAGE \\
      VDEF:min=p,MINIMUM \\
@@ -114,12 +115,12 @@ sub create_graph {
      GPRINT:avg:"Average %4.2lf Posts\\r" \\
      GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
 
-    `rrdtool graph $file_folder/${board}_year.png -a PNG -t "/${board}/ Posts/Year" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i \\
+    `rrdtool graph $file_folder/${board}_year.svg -a SVG -t "/${board}/ Posts/Year" \\
+     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
      -v "Posts/5 Min" \\
      --alt-y-grid --end $last --start end-1year \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 \\
+     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
      DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
      VDEF:avg=p,AVERAGE \\
      VDEF:min=p,MINIMUM \\
@@ -130,10 +131,10 @@ sub create_graph {
      GPRINT:avg:"Average %4.2lf Posts\\r" \\
      GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
     
-    return { day => "<img src=\"$file_folder/${board}_day.png\" />",
-             week => "<img src=\"$file_folder/${board}_week.png\" />",
-             month => "<img src=\"$file_folder/${board}_month.png\" />",
-             year => "<img src=\"$file_folder/${board}_year.png\" />"
+    return { day => "<img src=\"$file_folder/${board}_day.svg\" width=\"1030\" />",
+             week => "<img src=\"$file_folder/${board}_week.svg\" width=\"1030\" />",
+             month => "<img src=\"$file_folder/${board}_month.svg\" width=\"1030\" />",
+             year => "<img src=\"$file_folder/${board}_year.svg\" width=\"1030\" />"
            }
 }
 
