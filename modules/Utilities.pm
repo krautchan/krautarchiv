@@ -85,6 +85,7 @@ sub create_graph {
     `rrdtool graph $file_folder/${board}_week.png -a PNG -t "/${board}/ Posts/Week" \\
      --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
+     -v "Posts/5 Min" \\
      --alt-y-grid --end $last --start end-1w \\
      -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 \\
      DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
@@ -100,6 +101,7 @@ sub create_graph {
     `rrdtool graph $file_folder/${board}_month.png -a PNG -t "/${board}/ Posts/Month" \\
      --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
+     -v "Posts/5 Min" \\
      --alt-y-grid --end $last --start end-1month \\
      -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 \\
      DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
@@ -115,6 +117,7 @@ sub create_graph {
     `rrdtool graph $file_folder/${board}_year.png -a PNG -t "/${board}/ Posts/Year" \\
      --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
+     -v "Posts/5 Min" \\
      --alt-y-grid --end $last --start end-1year \\
      -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 \\
      DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
