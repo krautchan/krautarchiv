@@ -135,6 +135,11 @@ sub save_thread {
     }
 
     my $thread_id = @$thread[0]->{id};
+    
+    unless($thread_id) {
+        print "404 - Das haben wir nicht mehr. Kriegen wir auch nicht mehr rein.\n";
+        return;
+    }
 
     my $board_id = $db->add_board($board);
     my $threads_rowid = $db->add_thread($board_id, $thread_id);
