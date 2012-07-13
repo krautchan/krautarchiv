@@ -21,13 +21,13 @@
     </table>
     <div class=margin>
     [% IF page %]
-        <a href="?view=tag&tags_rowid=[% tags_rowid %]&page=[% prev_page %]">PREV</a>
+        <a href="?view=tag&tag_id=[% tag_id %]&page=[% prev_page %]">PREV</a>
     [% END %]
     [% FOREACH p IN page_list %]
-        <a href="?view=tag&tags_rowid=[% tags_rowid %]&page=[% p %]">[% p %]</a>
+        <a href="?view=tag&tag_id=[% tag_id %]&page=[% p %]">[% p %]</a>
     [% END %]
     [% IF page < (max_pages - 1) %]
-        <a href="?view=tag&tags_rowid=[% tags_rowid %]&page=[% next_page %]">NEXT</a>
+        <a href="?view=tag&tag_id=[% tag_id %]&page=[% next_page %]">NEXT</a>
     [% END %]
         <p>Total: [% total %] ([% time %] seconds)</p>
     </div>

@@ -11,7 +11,7 @@
         <tr>
         [% FOREACH tag IN tag_list %]
             <td>
-                <a href="?view=tag&tags_rowid=[% tag.tags_rowid %]">[% tag.tag %]</a>
+                <a href="?view=tag&tag_id=[% tag.tag_id %]">[% tag.tag %]</a>
             </td>
     [% UNLESS loop.count mod 10 %]
         </tr>

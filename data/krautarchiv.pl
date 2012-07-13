@@ -142,14 +142,14 @@ sub save_thread {
     }
 
     my $board_id = $db->add_board($board);
-    my $threads_rowid = $db->add_thread($board_id, $thread_id);
 
     my $i = 1;
     foreach(@$thread) {
         print "$i/" . scalar(@$thread) . " Board: $board; Thread: $thread_id; Post: $_->{id};";
         unless($db->get_post($board_id, $_->{id})) {
-            my $posts_rowid = $db->add_post($threads_rowid, $_->{id}, $_->{subject},
-                                            $_->{name}, $_->{date}, $_->{text});
+            my $posts_rowid = $db->add_post($board_id, $thread_id, $_->{id},
+                                            $_->{subject}, $_->{name},
+                                            $_->{date}, $_->{text});
             print " - saved\n";
             save_files($posts_rowid,$_);
         } else {

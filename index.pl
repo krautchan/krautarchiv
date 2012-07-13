@@ -48,22 +48,22 @@ sub add_tag {
         return;
     }
 
-    my $tags_rowid = $db->add_tag($cgi->escapeHTML($tag));
-    $db->add_tag_to_file($tags_rowid,$file_id);
+    my $tag_id = $db->add_tag($cgi->escapeHTML($tag));
+    $db->add_tag_to_file($tag_id,$file_id);
 
     show_file();
 }
 
 sub delete_tag {
-    my @tags_rowid_list = $cgi->param('tags_rowid');
+    my @tag_id_list = $cgi->param('tag_id');
     my $file_id = $cgi->param('file_id');
 
-    unless(@tags_rowid_list) {
+    unless(@tag_id_list) {
         show_file();
         return;
     }
     
-    foreach(@tags_rowid_list) {
+    foreach(@tag_id_list) {
         $db->delete_tag($_,$file_id);
     }
    show_file();
@@ -98,9 +98,6 @@ sub board {
     my $thread_list = $db->get_thread_list($board_id,$order,$limit,$offset);
     
     foreach(@$thread_list) {
-        my $post = $db->get_post($board_id,$_->{thread_id});
-        @{$_}{keys %$post} = values %$post;
-        $_->{total_answers} = $db->get_total_posts($_->{thread_id});
         $_->{file_list} = $db->get_file_list_by_post($_->{posts_rowid});
         foreach(@{$_->{file_list}}) {
             $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
@@ -166,21 +163,21 @@ sub tags {
 }
 
 sub tag {
-    my $tags_rowid = $cgi->param("tags_rowid");
+    my $tag_id = $cgi->param("tag_id");
     my $page = $cgi->param("page");
 
     my $limit = 20;
     my $offset = $page * $limit;
 
     my $start_time = Time::HiRes::time();
-    my $file_list = $db->get_file_list_by_tag($tags_rowid,$limit,$offset);
+    my $file_list = $db->get_file_list_by_tag($tag_id,$limit,$offset);
     
     foreach(@$file_list) {
         $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
         $_->{board_list} = $db->get_file_info_by_file_id($_->{file_id});
     }
 
-    my $total_count = $db->get_file_list_by_tag_count($tags_rowid);
+    my $total_count = $db->get_file_list_by_tag_count($tag_id);
     my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
 
     my $vars = {file_list => $file_list};
@@ -191,7 +188,7 @@ sub tag {
     my @page_list = 0..($max_pages - 1);
     $vars->{max_pages} = $max_pages;
     $vars->{page_list} = \@page_list;
-    $vars->{tags_rowid} = $cgi->escapeHTML($tags_rowid);
+    $vars->{tag_id} = $cgi->escapeHTML($tag_id);
     $vars->{total} = $total_count;
     $vars->{time} = $time;
     
@@ -206,9 +203,9 @@ sub stats {
         $_->{thread_count} = $db->get_total_threads($_->{board_id});
         $_->{post_count} = $db->get_total_posts_by_board_id($_->{board_id});
         $_->{posts_per_thread} = sprintf("%.2f",$_->{post_count}/$_->{thread_count});
-        $_->{file_count} = $db->get_file_list_count("",$_->{board});
+        $_->{file_count} = $db->get_file_list_count("",$_->{board_id});
         $_->{text_length} = $db->get_text_length_by_board_id($_->{board_id});
-        my $file_list = $db->get_file_list("",$_->{board},-1,0,0);
+        my $file_list = $db->get_file_list("",$_->{board_id},-1,0,0);
         
         $_->{size} = 0;
         foreach my $file (@{$file_list}) {
@@ -281,7 +278,7 @@ sub top_ten {
 }
 
 sub show_files {
-    my $board = $cgi->param('board') || "%";
+    my $board_id = $cgi->param('board_id') || 0;
     my $filetype = $cgi->param('filetype') || "";
     my $order = $cgi->param('order') || 0;
     my $page = $cgi->param('page') || 0;
@@ -300,8 +297,8 @@ sub show_files {
     my $offset = $page * $limit;
     
     my $start_time = Time::HiRes::time();
-    my $file_list = $db->get_file_list($filetype,$board,$limit,$offset,$order);
-    my $total_count = $db->get_file_list_count($filetype,$board);
+    my $file_list = $db->get_file_list($filetype, $board_id, $limit, $offset, $order);
+    my $total_count = $db->get_file_list_count($filetype,$board_id);
 
     foreach(@$file_list) {
         $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
@@ -311,7 +308,7 @@ sub show_files {
 
     my $vars = {};
     $vars->{board_list} = $db->get_board_list();
-    $vars->{board} = $cgi->escapeHTML($board);
+    $vars->{board_id} = $cgi->escapeHTML($board_id);
     $vars->{filetype} = $cgi->escapeHTML($filetype);
     $vars->{filetypes} = \@filetypes;
     $vars->{order} = $cgi->escapeHTML($order);

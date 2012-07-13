@@ -1,13 +1,13 @@
     <div class=margin>
         <form action="" method=get>
             <input type=hidden name=view value=show_files />
-            <select name=board size=1>
-                <option value="%"></option>
+            <select name=board_id size=1>
+                <option value="0"></option>
             [% FOREACH b IN board_list %]
-                [% IF board == b.board %]
-                    <option selected>[% b.board %]</option>
+                [% IF board_id == b.board_id %]
+                    <option value="[% b.board_id %]" selected>[% b.board %]</option>
                 [% ELSE %]
-                    <option>[% b.board %]</option>
+                    <option value="[% b.board_id %]">[% b.board %]</option>
                 [% END %]
             [% END %]
             </select>
@@ -53,13 +53,13 @@
     </table>
     <div class=margin>
     [% IF page %]
-        <a href="?view=show_files&board=[% board %]&filetype=[% filetype %]&page=[% prev_page %]&order=[% order %]">PREV</a>
+        <a href="?view=show_files&board_id=[% board_id %]&filetype=[% filetype %]&page=[% prev_page %]&order=[% order %]">PREV</a>
     [% END %]
     [% FOREACH p IN page_list %]
-        <a href="?view=show_files&board=[% board %]&filetype=[% filetype %]&page=[% p %]&order=[% order %]">[% p %]</a>
+        <a href="?view=show_files&board_id=[% board_id %]&filetype=[% filetype %]&page=[% p %]&order=[% order %]">[% p %]</a>
     [% END %]
     [% IF page < (max_pages - 1) %]
-        <a href="?view=show_files&board=[% board %]&filetype=[% filetype %]&page=[% next_page %]&order=[% order %]">NEXT</a>
+        <a href="?view=show_files&board_id=[% board_id %]&filetype=[% filetype %]&page=[% next_page %]&order=[% order %]">NEXT</a>
     [% END %]
         <p>Total: [% total %] ([% time %] seconds)</p>
     </div>
