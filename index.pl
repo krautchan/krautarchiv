@@ -6,7 +6,7 @@ use warnings;
 
 use lib ("./modules","./domain");
 
-use CGI;
+use CGI::Fast;
 use CGI::Carp qw(warningsToBrowser fatalsToBrowser);
 use POSIX;
 use Template;
@@ -19,62 +19,68 @@ my $file_folder = "img";
 my $thumb_folder = "thumb";
 my $data_folder = "data";
 
-my $db = Database->new("$data_folder/data.db");
-my $cgi = new CGI;
 my $template = Template->new({ INCLUDE_PATH => './view',
                                POST_CHOMP   => 1,
                                TRIM => 0});
-
-main();
+while(my $cgi = new CGI::Fast) {
+    my $db = Database->new("$data_folder/data.db");
+    print $cgi->header();
+    main($cgi, $db);
+}
 
 sub main {
+    my ($cgi,$db) = @_;
     my $action = $cgi->param('action') || "";
     my $view = $cgi->param('view') || "empty_index";
     
     if($action) {
-        &{$action}();
+        &{$action}($cgi,$db);
         return;
     }
 
-    &{$view}();
+    &{$view}($cgi,$db);
 }
 
 sub add_tag {
+    my ($cgi,$db) = @_;
     my $tag = $cgi->param('tag');
     my $file_id = $cgi->param('file_id');
 
     unless($tag && $file_id) {
-        empty_index();
+        empty_index($cgi,$db);
         return;
     }
 
     my $tag_id = $db->add_tag($cgi->escapeHTML($tag));
     $db->add_tag_to_file($tag_id,$file_id);
 
-    show_file();
+    show_file($cgi,$db);
 }
 
 sub delete_tag {
+    my ($cgi,$db) = @_;
     my @tag_id_list = $cgi->param('tag_id');
     my $file_id = $cgi->param('file_id');
 
     unless(@tag_id_list) {
-        show_file();
+        show_file($cgi,$db);
         return;
     }
     
     foreach(@tag_id_list) {
         $db->delete_tag($_,$file_id);
     }
-   show_file();
+   show_file($cgi,$db);
 }
 
 sub empty_index {
-    menu();   
+    my ($cgi,$db) = @_;
+    menu($cgi,$db);   
     $template->process('index.tmpl');
 }
 
 sub board {
+    my ($cgi,$db) = @_;
     my $board_id = $cgi->param('board_id') || undef;
     my $order = $cgi->param('order') || 0;
     my $page = $cgi->param('page') || 0;
@@ -83,7 +89,7 @@ sub board {
     my $offset = $page * $limit;
 
     unless($board_id) {
-        empty_index();
+        empty_index($cgi,$db);
         return;
     }
     my $vars = {
@@ -116,16 +122,17 @@ sub board {
     $vars->{thread_list} = $thread_list;
     $vars->{time} = $time;
     
-    menu();
+    menu($cgi,$db);
     $template->process('board.tmpl', $vars) || print $template->error();;
 }
 
 sub thread {
+    my ($cgi,$db) = @_;
     my $board_id = $cgi->param('board_id') || undef;
     my $thread_id = $cgi->param('thread_id') || undef;
 
     unless($board_id && $thread_id) {
-        empty_index();
+        empty_index($cgi,$db);
         return;
     }
     
@@ -144,11 +151,12 @@ sub thread {
     my $vars = {post_list => $post_list};
     $vars->{time} = $time;
     
-    menu();
+    menu($cgi,$db);
     $template->process('thread.tmpl', $vars) || print $template->error();
 }
 
 sub tags {
+    my ($cgi,$db) = @_;
     my $letter = $cgi->param("letter") || 'a';
     
     my $vars = {letter => $letter };
@@ -158,11 +166,12 @@ sub tags {
     my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
     $vars->{time} = $time;
     
-    menu();
+    menu($cgi,$db);
     $template->process('tags.tmpl', $vars) || print $template->error();
 }
 
 sub tag {
+    my ($cgi,$db) = @_;
     my $tag_id = $cgi->param("tag_id");
     my $page = $cgi->param("page");
 
@@ -192,11 +201,12 @@ sub tag {
     $vars->{total} = $total_count;
     $vars->{time} = $time;
     
-    menu();
+    menu($cgi,$db);
     $template->process('tag.tmpl', $vars) || print $template->error();
 }
 
 sub stats {
+    my ($cgi,$db) = @_;
     my $board_list = $db->get_board_list();
     
     foreach(@{$board_list}) {
@@ -222,26 +232,28 @@ sub stats {
 
     my $vars = { board_list => $board_list };
 
-    menu();
+    menu($cgi,$db);
     $template->process('stats.tmpl', $vars) || print $template->error();
 }
 
 sub graph {
+    my ($cgi,$db) = @_;
     my $board_id = $cgi->param('board_id');
 
     my $board = $db->get_board($board_id);
 
     unless($board) {
-        empty_index();    
+        empty_index($cgi,$db);    
     }
     
     my $vars = {graph => Utilities::create_graph($board,$file_folder,$data_folder)};
 
-    menu();
+    menu($cgi,$db);
     $template->process('graph.tmpl', $vars) || print $template->error();
 }
 
 sub top_ten {
+    my ($cgi,$db) = @_;
     my $type = $cgi->param('type');
 
     if($type eq 'files') {
@@ -258,7 +270,7 @@ sub top_ten {
         $vars->{file_list} = $file_list;
         $vars->{time} = $time;
         
-        menu();
+        menu($cgi,$db);
         $template->process('top_ten_files.tmpl', $vars) || print $template->error();
     } elsif($type eq 'subjects') {
         my $vars = {};
@@ -270,14 +282,15 @@ sub top_ten {
         $vars->{subjects_list} = $subjects_list;
         $vars->{time} = $time;
         
-        menu();
+        menu($cgi,$db);
         $template->process('top_ten_subjects.tmpl', $vars) || print $template->error();
     } else {
-        empty_index();
+        empty_index($cgi,$db);
     }
 }
 
 sub show_files {
+    my ($cgi,$db) = @_;
     my $board_id = $cgi->param('board_id') || 0;
     my $filetype = $cgi->param('filetype') || "";
     my $order = $cgi->param('order') || 0;
@@ -323,11 +336,12 @@ sub show_files {
     $vars->{page_list} = \@page_list;
     $vars->{time} = $time;
     
-    menu();
+    menu($cgi,$db);
     $template->process('show_files.tmpl', $vars) || print $template->error();
 }
 
 sub show_file {
+    my ($cgi,$db) = @_;
     my $file_id = $cgi->param('file_id') || undef;
 
     unless($file_id) {
@@ -347,11 +361,12 @@ sub show_file {
     $vars->{board_list} = $db->get_file_info_by_file_id($file_id);
     $vars->{tag_list} = $db->get_tag_list_by_file_id($file_id);
 
-    menu();
+    menu($cgi,$db);
     $template->process('show_file.tmpl', $vars) || print $template->error();
 }
 
 sub menu {
+    my ($cgi,$db) = @_;
     my $vars = {};
     my $board_list = $db->get_board_list;
 
@@ -367,5 +382,6 @@ sub menu {
 }
 
 sub AUTOLOAD {
-    empty_index();
+    my ($cgi,$db) = @_;
+    empty_index($cgi,$db);
 }
