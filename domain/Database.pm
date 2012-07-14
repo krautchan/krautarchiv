@@ -267,12 +267,21 @@ sub get_file_info_by_file_id {
 sub get_board_list {
     my $self = shift;
 
-    my $sth = $self->{dbh}->prepare("SELECT `board_id`,`board` FROM boards ORDER BY `board`");
+    my $sth = $self->{dbh}->prepare("SELECT `board_id`,`board`,COUNT(`threads`)
+                                     FROM `boards`
+                                     JOIN ( SELECT `board_id`,`thread_id` AS `threads`
+                                            FROM `posts` 
+                                            GROUP BY `board_id`,`threads`
+                                          ) 
+                                     USING(`board_id`)
+                                     GROUP BY `board_id` ORDER BY `board`");
     my @board_list;
 
     $sth->execute;
-    while(my ($board_id,$board) = $sth->fetchrow) {
-        push(@board_list, { board_id => $board_id, board => $board });
+    while(my ($board_id,$board,$thread_count) = $sth->fetchrow) {
+        push(@board_list, { board_id => $board_id,
+                            board => $board,
+                            thread_count => $thread_count });
     }
 
     return \@board_list;
@@ -289,26 +298,26 @@ sub get_thread_list {
     
     if($order) {
         $sth_1 = $self->{dbh}->prepare("SELECT `c`,`posts_rowid`,`bid`,`tid`,`post_id`,`subject`,`user`,`date`,`text`
-                                      FROM ( SELECT COUNT(*) AS `c`,
-                                                    `thread_id` AS `tid`,
-                                                    `board_id` AS bid
-                                             FROM `posts` WHERE `board_id` = ?
-                                             GROUP BY `thread_id`
-                                           )
-                                      JOIN `posts` AS `p` ON `tid` = p.`post_id`
-                                      AND `bid` = `p`.`board_id`
-                                      ORDER BY `c` DESC LIMIT ? OFFSET ?");
+                                        FROM ( SELECT COUNT(*) AS `c`,
+                                                     `thread_id` AS `tid`,
+                                                     `board_id` AS `bid`
+                                               FROM `posts` WHERE `board_id` = ?
+                                               GROUP BY `thread_id`
+                                             )
+                                        JOIN `posts` AS `p` ON `tid` = `p`.`post_id`
+                                        AND `bid` = `p`.`board_id`
+                                        ORDER BY `c` DESC LIMIT ? OFFSET ?");
     } else {
         $sth_1 = $self->{dbh}->prepare("SELECT `c`,`posts_rowid`,`bid`,`tid`,`post_id`,`subject`,`user`,`date`,`text`
-                                      FROM ( SELECT COUNT(*) AS `c`,
-                                                    `thread_id` AS `tid`,
-                                                    `board_id` AS bid
-                                             FROM `posts` WHERE `board_id` = ?
-                                             GROUP BY `thread_id`
-                                           )
-                                      JOIN `posts` AS `p` ON `tid` = `p`.`post_id`
-                                      AND `bid` = `p`.`board_id`
-                                      ORDER BY `thread_id` DESC LIMIT ? OFFSET ?");
+                                        FROM ( SELECT COUNT(*) AS `c`,
+                                                     `thread_id` AS `tid`,
+                                                     `board_id` AS `bid`
+                                               FROM `posts` WHERE `board_id` = ?
+                                               GROUP BY `thread_id`
+                                             )
+                                        JOIN `posts` AS `p` ON `tid` = `p`.`post_id`
+                                        AND `bid` = `p`.`board_id`
+                                        ORDER BY `thread_id` DESC LIMIT ? OFFSET ?");
     }
 
     $sth_1->execute($board_id,$limit,$offset);

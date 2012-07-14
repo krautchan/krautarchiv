@@ -1,7 +1,7 @@
     <div class=center>
         <a href="[% file.path %]"><img class=fileview src="[% file.path %]" /></a>
         <ul class=postlist>
-        [% FOREACH post IN board_list %]
+        [% FOREACH post IN post_list %]
             <li>
                 <a href="?view=board&board_id=[% post.board_id %]">[% post.board %]</a>/
                 <a href="?view=thread&board_id=[% post.board_id %]&thread_id=[% post.thread_id %]">[% post.thread_id %]</a>/

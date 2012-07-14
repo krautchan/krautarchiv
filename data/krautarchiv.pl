@@ -55,11 +55,12 @@ sub update_rrd {
     } else {
         $last_update = $db->get_first_post_time_by_board_id($board_id);
         `rrdtool create $board.rrd -b $last_update --step 300 \\
-         DS:posts:GAUGE:300:0:1000 \\
-         RRA:AVERAGE:0.5:1:288 \\
-         RRA:AVERAGE:0.5:1:2016 \\
-         RRA:AVERAGE:0.5:1:8064 \\
-         RRA:AVERAGE:0.5:1:96768`;
+         DS:posts:GAUGE:600:0:1000 \\
+         RRA:AVERAGE:0.5:1:2016`;
+
+        `rrdtool create $board-year.rrd -b $last_update --step 86400 \\
+         DS:posts:GAUGE:87000:0:10000 \\
+         RRA:AVERAGE:0.5:1:400`;
     }
 
     $last_update += 300;
@@ -69,6 +70,13 @@ sub update_rrd {
 
     foreach(@{$post_count}) {
         `rrdtool update $board.rrd $_->{time}:$_->{count}`;
+        print("Board: $board; Time: $_->{time}/$now $_->{count}\n");
+    }
+
+    $post_count = $db->get_post_count_by_time_interval($board_id,$last_update,$now,86400);
+    
+    foreach(@{$post_count}) {
+        `rrdtool update $board-year.rrd $_->{time}:$_->{count}`;
         print("Board: $board; Time: $_->{time}/$now $_->{count}\n");
     }
 }
