@@ -40,6 +40,19 @@ sub add_board {
     return $board_id;
 }
 
+sub add_thread_data {
+    my $self = shift;
+    my $board_id = shift || croak("gibe board_id");
+    my $thread_id = shift || croak("gibe thread_id");
+    my $content_length = shift || croak("gibe content_length");
+    
+    my $sth = $self->{dbh}->prepare("INSERT OR IGNORE INTO `threads`(`board_id`,`thread_id`,`content_length`) VALUES (?,?,?)");
+    $sth->execute($board_id,$thread_id,$content_length);
+    
+    $self->{dbh}->commit;
+}
+
+
 sub add_post {
     my $self = shift;
     my $board_id = shift || croak("need board_id");
@@ -68,12 +81,13 @@ sub add_post {
 sub add_file {
     my $self = shift;
     my $path = shift || croak("need path");
+    my $timestamp = shift || croak("need timestamp");
     my $md5 = shift || croak("need md5");
 
-    my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `files`(`path`,`md5`) VALUES(?,?)");
+    my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `files`(`path`,`timestamp`,`md5`) VALUES(?,?,?)");
     my $sth_2 = $self->{dbh}->prepare("SELECT `file_id` FROM `files` WHERE `md5` = ?");
 
-    $sth_1->execute($path,$md5);
+    $sth_1->execute($path,$timestamp,$md5);
     $sth_2->execute($md5);
 
     my ($file_id) = $sth_2->fetchrow;
@@ -123,6 +137,21 @@ sub add_tag_to_file {
 
     $self->{dbh}->commit;
 }
+
+sub update_thread_data {
+    my $self = shift;
+    my $board_id = shift || croak("gibe board_id");
+    my $thread_id = shift || croak("gibe thread_id");
+    my $content_length = shift || croak("gibe content_length");
+    
+    my $sth = $self->{dbh}->prepare("UPDATE `threads` SET `content_length` = ?
+                                     WHERE `board_id` = ? AND `thread_id` = ?");
+                                     
+    $sth->execute($content_length,$board_id,$thread_id);
+    
+    $self->{dbh}->commit;
+}
+
 
 sub get_board {
     my $self = shift;
@@ -175,6 +204,27 @@ sub get_thread {
     }
 
     return \@post_list;
+}
+
+sub get_thread_data {
+    my $self = shift;
+    my $board_id = shift || croak("gibe board_id");
+    my $thread_id = shift || croak("give thread_id");
+
+    my $sth = $self->{dbh}->prepare("SELECT `board_id`,`thread_id`,`content_length`
+                                     FROM `threads`
+                                     WHERE `board_id` = ? AND `thread_id` = ?");
+    
+    $sth->execute($board_id,$thread_id);
+    
+    if(my ($bid,$tid,$cl) = $sth->fetchrow) {
+        return { board_id => $bid,
+                 thread_id => $tid,
+                 content_length => $cl
+               };
+    } else {
+        return undef;
+    }
 }
 
 sub get_post {
@@ -362,7 +412,7 @@ sub get_file_list {
                                     JOIN `post_files` USING (`file_id`)
                                     JOIN `posts` USING(`posts_rowid`)
                                     WHERE `path` LIKE ? AND `board_id` $comparator ?
-                                    GROUP BY `file_id` ORDER BY `path` $order
+                                    GROUP BY `file_id` ORDER BY `timestamp` $order
                                     LIMIT ? OFFSET ?");
 
     $sth->execute("%$file_type", $board_id, $limit, $offset);
@@ -697,6 +747,14 @@ sub setup {
     $dbh->do("CREATE TABLE 
               IF NOT EXISTS `boards` (`board_id` INTEGER PRIMARY KEY NOT NULL,
                                       `board` VARCHAR(4) UNIQUE NOT NULL)");
+                                      
+    $dbh->do("CREATE TABLE
+              IF NOT EXISTS `threads` (`board_id` INTEGER,
+                                       `thread_id` INTEGER,
+                                       `content_length` INTEGER,
+                                        PRIMARY KEY(`board_id`,`thread_id`),
+                                        FOREIGN KEY(`board_id`) REFERENCES `boards`(`board_id`)
+                                        ON DELETE CASCADE ON UPDATE CASCADE)");
 
     $dbh->do("CREATE TABLE
               IF NOT EXISTS `posts` (`posts_rowid` INTEGER PRIMARY KEY,
@@ -709,11 +767,16 @@ sub setup {
                                      `text` TEXT,
                                       UNIQUE(`board_id`,`post_id`),
                                       FOREIGN KEY(`board_id`) REFERENCES `boards`(`board_id`)
+                                      ON DELETE CASCADE ON UPDATE CASCADE,
+                                      FOREIGN KEY(`thread_id`) REFERENCES `threads`(`thread_id`)
                                       ON DELETE CASCADE ON UPDATE CASCADE)");
+
     
+
     $dbh->do("CREATE TABLE
               IF NOT EXISTS `files` (`file_id` INTEGER PRIMARY KEY,
                                      `path` TEXT UNIQUE NOT NULL,
+                                     `timestamp` INTEGER NOT NULL,
                                      `md5` VARCHAR(32) UNIQUE NOT NULL)");
 
     $dbh->do("CREATE TABLE

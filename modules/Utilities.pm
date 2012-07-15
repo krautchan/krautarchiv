@@ -6,6 +6,7 @@ use warnings;
 package Utilities;
 
 use Carp qw( croak );
+use File::Path qw(make_path);
 use Image::Imlib2;
 
 sub create_file_link {
@@ -38,8 +39,19 @@ sub create_thumbnail {
     my $file_folder = shift || croak("need file_folder");
     my $thumb_folder = shift || croak("need thumb_folder");
 
-    my ($filename) = $path =~ /$file_folder\/(.*)/;
-    my $thumbpath = "$thumb_folder/thumbnail$filename";
+    my @path = split(/\//,$path);
+    my $filename = pop(@path);
+
+    my $thumbpath = $thumb_folder;
+    foreach(@path) {
+        $thumbpath .= "/$_";
+    }
+
+    unless( -e $thumbpath) {
+        make_path($thumbpath);
+    }
+
+    $thumbpath .= "/$filename";
 
     if( -e $thumbpath) {
         return $thumbpath;

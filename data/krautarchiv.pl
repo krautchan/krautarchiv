@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 
+use File::Copy;
+use File::Path qw(make_path);
 use DBI;
 use Digest::MD5;
 use LWP;
@@ -14,7 +16,7 @@ $browser->agent("Krautarchiv/1.0 - Das Archiv fuer den Bernd von Welt");
 
 my $db = Database->new("data.db");
 
-my $file_folder = "../img/";
+my $file_folder = "../img";
 
 main(('b','int','vip','a','c','co','d','e','f','fb','k','l','li','m','n','p','ph','sp','t','tv','v','w','we','x','z','zp','ng','prog','wk','h','s','kc','rfk'));
 
@@ -34,7 +36,11 @@ sub main {
             for(my $i = 0; $i < $max; $i++) {
                 print "Board: $_; Page: $i\n";
                 foreach my $thread(get_thread_urls("http://krautchan.net/$_/$i.html")) {
-                    save_thread(parse_thread($thread,$_),$_);
+                    if(check_head($thread,$_)) {
+                        save_thread(parse_thread($thread,$_),$_);
+                    } else {
+                        print "SKIP: Board: $_; Thread: $thread\n"
+                    }
                 }
             }
             update_rrd($_);
@@ -97,7 +103,7 @@ sub get_md5sum {
 
 sub download_file {
     my ($filename) = @_;
-    my $path = "$file_folder$filename";
+    my $path = "$file_folder/$filename";
 
     if( -e $path) {
         return $path;
@@ -118,31 +124,41 @@ sub save_files {
         unless($md5) {
             next;
         }
+
+        my ($timestamp,$ext) = split(/\./,$_->{path});
+        my ($f1,$f2,$f3,$f4,$f5,$f6,$f7,$f8) = $md5 =~ /(.{4})/g;
+
+        my $new_path = "$f1/$f2/$f3$f4/$f5$f6";
+        make_path("$file_folder/$new_path");
+        
+        unless (move("$file_folder/$_->{path}", "$file_folder/$new_path/$f7$f8.$ext")) {
+            print "$!";
+            unlink("$file_folder/$_->{path}");
+        }
+        $_->{path} = "$new_path/$f7$f8.$ext";
+
         print "File: $_->{path} MD5: $md5";
         if(my $file = $db->get_file_by_md5($md5)) {
-            if($_->{path} ne $file->{path}) {
-                print " - duplicate";
-                unlink($file_folder.$_->{path});
-            }
+            print " - duplicate\n";
             my $file_id = $file->{file_id};
             $db->add_file_to_post($file_id,$posts_rowid,$_->{filename});
         } else {
-            print "- saved";
-            my $file_id = $db->add_file($_->{path},$md5);
+            print "- saved\n";
+            my $file_id = $db->add_file($_->{path},$timestamp,$md5);
             $db->add_file_to_post($file_id,$posts_rowid,$_->{filename});
         }
-        print "\n";
     }
 }
 
 sub save_thread {
     my ($thread,$board) = @_;
-    unless(@$thread) {
+    
+    unless($thread) {
         print "404 - Das haben wir nicht mehr. Kriegen wir auch nicht mehr rein.\n";
         return;
     }
 
-    my $thread_id = @$thread[0]->{id};
+    my $thread_id = $thread->{thread_id};
     
     unless($thread_id) {
         print "404 - Das haben wir nicht mehr. Kriegen wir auch nicht mehr rein.\n";
@@ -150,10 +166,11 @@ sub save_thread {
     }
 
     my $board_id = $db->add_board($board);
+    $db->add_thread_data($board_id,$thread_id,1);
 
     my $i = 1;
-    foreach(@$thread) {
-        print "$i/" . scalar(@$thread) . " Board: $board; Thread: $thread_id; Post: $_->{id};";
+    foreach(@{$thread->{post_list}}) {
+        print "$i/" . scalar(@{$thread->{post_list}}) . " Board: $board; Thread: $thread_id; Post: $_->{id};";
         unless($db->get_post($board_id, $_->{id})) {
             my $posts_rowid = $db->add_post($board_id, $thread_id, $_->{id},
                                             $_->{subject}, $_->{name},
@@ -165,6 +182,27 @@ sub save_thread {
         }
         $i++;
     }
+    $db->update_thread_data($board_id,$thread_id,$thread->{content_length});
+}
+
+sub check_head {
+    my ($thread_id,$board) = @_;
+    my $res = $browser->head("http://krautchan.net/$board/thread-$thread_id.html");
+
+    if($res->code == 200) {
+        my $board_id = $db->get_board_id($board);
+        my $thread_data = $db->get_thread_data($board_id,$thread_id);
+        
+        if($thread_data) {
+            if($res->header("Content-Length") != $thread_data->{content_length}) {
+                return $res->header("Content-Length");
+            }
+        } else {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 sub parse_post_header {
@@ -187,15 +225,18 @@ sub parse_post_files {
 
 sub parse_thread {
     my ($thread_id,$board) = @_;
-    my $response = $browser->get("http://krautchan.net/$board/thread-$thread_id.html");
-    my $txt = $response->content;
-    my @thread = ();
+    my $res = $browser->get("http://krautchan.net/$board/thread-$thread_id.html");
+    
+    if($res->is_error) {
+        return undef;
+    }
+    
+    my $content_length = $res->header("Content-Length");
+    my $txt = $res->content;
+    
+    my @post_list= ();
     $txt =~ s/\s{2,}/ /g;
     $txt =~ s/\n/ /g;
-
-    if($txt =~ /<title>404<\/title>/) {
-        return \@thread;
-    }
 
     my ($thread_header) = $txt =~ /<div class="postheader">(.*?)<\/div>/;
     my @thread_files = $txt =~ /<div class="file_thread">(.*?)<\/div>/g;
@@ -208,7 +249,7 @@ sub parse_thread {
     $post->{files} = parse_post_files(@thread_files);
     $post->{text} = $thread_text;
 
-    push(@thread, $post);
+    push(@post_list, $post);
 
     foreach(@replies) {
         my @reply_files = $_ =~ /<div class="file_reply">(.*?)<\/div>/g;
@@ -217,9 +258,12 @@ sub parse_thread {
         parse_post_header($_,$post);
         $post->{files} = parse_post_files(@reply_files);
         ($post->{text}) = $_ =~ /<p id="post_text_$post->{id}">(.*?)<\/p>/;
-        push(@thread,$post);
+        push(@post_list,$post);
     }
-    return \@thread;
+    return { content_length => $content_length,
+             thread_id => $thread_id,
+             post_list => \@post_list
+           };
 }
 
 sub get_thread_urls {
