@@ -35,7 +35,19 @@
         <tr>
         [% FOREACH file IN file_list %]
             <td>
+                <div style="display:inline;float:left;">
                 [% file.thumb %]
+                <div><a href="javascript:{}" onclick="document.getElementById('delete_file_form_[% file.file_id %]').submit();">Delete</a></div>
+                </div>
+                <form id="delete_file_form_[% file.file_id %]" action="" method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="delete_file" />
+                    <input type="hidden" name="view" value="show_files" />
+                    <input type="hidden" name="filetype" value="[% filetype %]" />
+                    <input type="hidden" name="board_id" value="[% board_id %]" />
+                    <input type="hidden" name="file_id" value="[% file.file_id %]" />
+                    <input type="hidden" name="order" value="[% order %]" />
+                    <input type="hidden" name="page" value="[% page %]" />
+                </form>
                 <ul class=postlist>
                 [% FOREACH b IN file.board_list %]
                     <li>

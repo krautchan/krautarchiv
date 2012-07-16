@@ -8,7 +8,17 @@
         <tr>
             <td>
             [% FOREACH file IN post.file_list %]
+                <div style="display:inline;float:left;">
                 [% file.thumb %]
+                <div><a href="javascript:{}" onclick="document.getElementById('delete_file_form_[% file.file_id %]').submit();">Delete</a></div>
+                </div>
+                <form id="delete_file_form_[% file.file_id %]" action="" method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="delete_file" />
+                    <input type="hidden" name="view" value="thread" />
+                    <input type="hidden" name="board_id" value="[% post.board_id %]" />
+                    <input type="hidden" name="thread_id" value="[% post.thread_id %]" />
+                    <input type="hidden" name="file_id" value="[% file.file_id %]" />
+                </form>
             [% END %]
             </td>
         </tr>

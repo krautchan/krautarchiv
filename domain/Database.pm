@@ -186,7 +186,7 @@ sub get_thread {
     my $board_id = shift || croak("need board_id");
     my $thread_id = shift || croak("need thread_id");
 
-    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`post_id`,`subject`,`user`,`date`,`text`
+    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`board_id`,`thread_id`,`post_id`,`subject`,`user`,`date`,`text`
                                      FROM `posts`
                                      WHERE `board_id` = ? AND `thread_id` = ?
                                      ORDER BY `post_id` ASC");
@@ -194,8 +194,10 @@ sub get_thread {
     $sth->execute($board_id, $thread_id);
 
     my @post_list = ();
-    while(my ($posts_rowid,$post_id,$subject,$user,$date,$text) = $sth->fetchrow) {
+    while(my ($posts_rowid,$board_id,$thread_id,$post_id,$subject,$user,$date,$text) = $sth->fetchrow) {
         push(@post_list, { posts_rowid => $posts_rowid,
+                           board_id => $board_id,
+                           thread_id => $thread_id,
                            post_id => $post_id,
                            subject => $subject,
                            user => $user,
@@ -725,6 +727,19 @@ sub get_current_time {
     return $time;
 }
 
+sub delete_file {
+    my $self = shift;
+    my $file_id = shift || croak("gibe file_id");
+    
+    my $sth = $self->{dbh}->prepare("DELETE FROM `files` WHERE `file_id` = ?");
+    if ($sth->execute($file_id)) {
+        $self->{dbh}->commit;
+        return 1;
+    }
+    return 0;
+}
+
+
 sub delete_tag {
     my $self = shift;
     my $tag_id = shift || croak("need tag_id");
@@ -817,7 +832,14 @@ sub setup {
                   WHERE NOT EXISTS (SELECT * FROM `post_files`
                                     WHERE `files`.file_id = `post_files`.`file_id`);
               END");
-    
+             
+    $dbh->do("CREATE TRIGGER
+              IF NOT EXISTS `files_delete` AFTER DELETE ON `files`
+              BEGIN
+                  DELETE FROM `post_files`
+                  WHERE `post_files`.`file_id` = OLD.`file_id`;
+              END;");
+
     $dbh->do("CREATE INDEX IF NOT EXISTS `posts_index` ON `posts` (`board_id`,`thread_id`,`post_id`,`date`)");
 
     $dbh->do("CREATE INDEX IF NOT EXISTS `post_files_index` ON `post_files` (`filename`)");

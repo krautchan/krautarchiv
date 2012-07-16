@@ -68,6 +68,21 @@ sub add_tag {
     show_file($cgi,$db,$vars);
 }
 
+sub delete_file {
+    my ($cgi,$db,$vars) = @_;
+    my $file_id = $cgi->param('file_id');
+    my $view = $cgi->param('view');
+    
+    my $file = $db->get_file($file_id);
+    
+    if($db->delete_file($file_id)) {
+        unlink("$file_folder/$file->{path}");
+        unlink("$thumb_folder/$file_folder/$file->{path}");
+    }
+
+    &{$view}($cgi,$db,$vars);
+}
+
 sub delete_tag {
     my ($cgi,$db,$vars) = @_;
     my @tag_id_list = $cgi->param('tag_id');

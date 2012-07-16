@@ -18,19 +18,25 @@ sub create_file_link {
     $path = "$file_folder/$path";
 
     if($path =~ /\.(mp3)|(ogg)$/) {
-        return "<audio controls=\"controls\">".
+        return "<audio controls=\"controls\" class=thumbnail>".
                "<source src=\"$path\" type=\"audio/mp3\" /></audio>";
     } elsif($path =~ /\.swf$/) {
         return "<object data=\"$path\" type=\"application/x-shockwave-flash\">".
                "<param name=\"movie\" value=\"$path\"></object><br />".
                "<a href=$path>Click Me</a>";
-    } elsif($path =~ /\.(zip)|(rar)|(torrent)|(psd)$/) {
-        return "<a href=$path>$path</a>";
+    } elsif($path =~ /\.torrent$/) {
+        return "<a href=$path><img class=thumbnail src=\"static/BitTorrent_Logo.svg\" /></a>";
+    } elsif($path =~ /\.zip$/) {
+        return "<a href=$path><img class=thumbnail src=\"static/Winzip-logo.svg\" /></a>";
+    } elsif($path =~ /\.rar$/) {
+        return "<a href=$path><img class=thumbnail src=\"static/Rar-logo.svg\" /></a>";
+    } elsif($path =~ /\.psd/) {
+        return "<a href=$path><img class=thumbnail src=\"static/Photoshop_logo.svg\" /></a>";
     } elsif($path =~ /\.gif$/) {
-        return "<a href=?view=show_file&file_id=$file_id><img src=$path width=200 /></a>";
+        return "<a href=?view=show_file&file_id=$file_id><img class=thumbnail src=$path /></a>";
     } else {
         my $thumbnail = create_thumbnail($path,$file_folder,$thumb_folder);
-        return "<a href=?view=show_file&file_id=$file_id><img src=$thumbnail width=200 /></a>";
+        return "<a href=?view=show_file&file_id=$file_id><img class=thumbnail src=$thumbnail /></a>";
     }
 }
 
