@@ -567,11 +567,11 @@ sub get_post_count_by_time_interval {
                                      ORDER BY `date`");
 
     my  @post_count = ();
-    for(my $i = $start_time; $i <= $stop_time; $i += $interval) {
+    for(my $i = $start_time; $i <= $stop_time - $interval; $i += $interval) {
         $sth->execute($board_id, $i, $i + $interval);
         my ($count) = $sth->fetchrow;
 
-        push(@post_count, {count => $count, time => $i});
+        push(@post_count, {count => $count, time => $i + $interval});
         print("$i/$stop_time $count\n");
     }
 

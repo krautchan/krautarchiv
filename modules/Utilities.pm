@@ -120,10 +120,10 @@ sub create_graph {
     `rrdtool graph $file_folder/${board}_month.svg -a SVG -t "/${board}/ Posts/Month" \\
      --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
-     -v "Posts/5 Min" \\
+     -v "Posts/Day" \\
      --alt-y-grid --end $last --start end-1month \\
      -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
-     DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
+     DEF:p=$data_folder/$board-year.rrd:posts:AVERAGE \\
      VDEF:avg=p,AVERAGE \\
      VDEF:min=p,MINIMUM \\
      VDEF:max=p,MAXIMUM \\
@@ -136,10 +136,10 @@ sub create_graph {
     `rrdtool graph $file_folder/${board}_year.svg -a SVG -t "/${board}/ Posts/Year" \\
      --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
-     -v "Posts/5 Min" \\
+     -v "Posts/Day" \\
      --alt-y-grid --end $last --start end-1year \\
      -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
-     DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
+     DEF:p=$data_folder/$board-year.rrd:posts:AVERAGE \\
      VDEF:avg=p,AVERAGE \\
      VDEF:min=p,MINIMUM \\
      VDEF:max=p,MAXIMUM \\

@@ -8,6 +8,7 @@ use File::Path qw(make_path);
 use DBI;
 use Digest::MD5;
 use LWP;
+use Time::Local;
 
 require "../domain/Database.pm";
 
@@ -54,6 +55,8 @@ sub update_rrd {
     my $board_id = $db->get_board_id($board);
 
     my $last_update = 0;
+    my $now = $db->get_current_time();
+    
     
     if( -e "$board.rrd") {
         $last_update = `rrdtool last $board.rrd`;
@@ -63,24 +66,28 @@ sub update_rrd {
         `rrdtool create $board.rrd -b $last_update --step 300 \\
          DS:posts:GAUGE:600:0:1000 \\
          RRA:AVERAGE:0.5:1:2016`;
-
-        `rrdtool create $board-year.rrd -b $last_update --step 86400 \\
-         DS:posts:GAUGE:87000:0:10000 \\
-         RRA:AVERAGE:0.5:1:400`;
     }
-
-    $last_update += 300;
-
-    my $now = $db->get_current_time();
+    
     my $post_count = $db->get_post_count_by_time_interval($board_id,$last_update,$now,300);
-
+    
     foreach(@{$post_count}) {
         `rrdtool update $board.rrd $_->{time}:$_->{count}`;
         print("Board: $board; Time: $_->{time}/$now $_->{count}\n");
     }
+    
+    if( -e "$board-year.rrd") {
+        $last_update = `rrdtool last $board-year.rrd`;
+        $last_update =~ s/\s//g;
+    } else {
+        $last_update = $db->get_first_post_time_by_board_id($board_id);
+
+        `rrdtool create $board-year.rrd -b $last_update --step 86400 \\
+         DS:posts:GAUGE:172800:0:1000000 \\
+         RRA:AVERAGE:0.5:1:400`;
+    }
 
     $post_count = $db->get_post_count_by_time_interval($board_id,$last_update,$now,86400);
-    
+
     foreach(@{$post_count}) {
         `rrdtool update $board-year.rrd $_->{time}:$_->{count}`;
         print("Board: $board; Time: $_->{time}/$now $_->{count}\n");
