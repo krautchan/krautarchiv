@@ -186,23 +186,35 @@ sub get_thread {
     my $board_id = shift || croak("need board_id");
     my $thread_id = shift || croak("need thread_id");
 
-    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`board_id`,`thread_id`,`post_id`,`subject`,`user`,`date`,`text`
+    my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`board_id`,`thread_id`,`post_id`,`subject`,`user`,`date`,`text`,`file_id`,`path`,`md5`
                                      FROM `posts`
+                                     LEFT JOIN `post_files` USING(`posts_rowid`)
+                                     LEFT JOIN `files` USING(`file_id`)
                                      WHERE `board_id` = ? AND `thread_id` = ?
-                                     ORDER BY `post_id` ASC");
+                                     ORDER BY `post_id`,`timestamp` ASC");
 
     $sth->execute($board_id, $thread_id);
 
     my @post_list = ();
-    while(my ($posts_rowid,$board_id,$thread_id,$post_id,$subject,$user,$date,$text) = $sth->fetchrow) {
-        push(@post_list, { posts_rowid => $posts_rowid,
-                           board_id => $board_id,
-                           thread_id => $thread_id,
-                           post_id => $post_id,
-                           subject => $subject,
-                           user => $user,
-                           date => $date,
-                           text => $text });
+    my $file_list;
+    my $current_posts_rowid = -1;
+    while(my ($posts_rowid,$board_id,$thread_id,$post_id,$subject,$user,$date,$text,$file_id,$path,$md5) = $sth->fetchrow) {
+        if($current_posts_rowid != $posts_rowid) {
+            $current_posts_rowid = $posts_rowid;
+            $file_list = _new_array();
+            push(@post_list, { posts_rowid => $posts_rowid,
+                               board_id => $board_id,
+                               thread_id => $thread_id,
+                               post_id => $post_id,
+                               subject => $subject,
+                               user => $user,
+                               date => $date,
+                               text => $text,
+                               file_list => $file_list});
+        }
+        if($file_id) {
+            push(@{$file_list}, { file_id => $file_id, path => $path, md5 => $md5 });
+        }
     }
 
     return \@post_list;
@@ -349,7 +361,7 @@ sub get_thread_list {
     my $sth_1;
     
     if($order) {
-        $sth_1 = $self->{dbh}->prepare("SELECT `c`,`posts_rowid`,`bid`,`tid`,`post_id`,`subject`,`user`,`date`,`text`
+        $sth_1 = $self->{dbh}->prepare("SELECT `c`,`posts_rowid`,`bid`,`tid`,`post_id`,`subject`,`user`,`date`,`text`,`file_id`,`path`,`md5`
                                         FROM ( SELECT COUNT(*) AS `c`,
                                                      `thread_id` AS `tid`,
                                                      `board_id` AS `bid`
@@ -358,9 +370,11 @@ sub get_thread_list {
                                              )
                                         JOIN `posts` AS `p` ON `tid` = `p`.`post_id`
                                         AND `bid` = `p`.`board_id`
+                                        JOIN `post_files` USING(`posts_rowid`)
+                                        JOIN `files` USING(`file_id`)
                                         ORDER BY `c` DESC LIMIT ? OFFSET ?");
     } else {
-        $sth_1 = $self->{dbh}->prepare("SELECT `c`,`posts_rowid`,`bid`,`tid`,`post_id`,`subject`,`user`,`date`,`text`
+        $sth_1 = $self->{dbh}->prepare("SELECT `c`,`posts_rowid`,`bid`,`tid`,`post_id`,`subject`,`user`,`date`,`text`,`file_id`,`path`,`md5`
                                         FROM ( SELECT COUNT(*) AS `c`,
                                                      `thread_id` AS `tid`,
                                                      `board_id` AS `bid`
@@ -369,23 +383,34 @@ sub get_thread_list {
                                              )
                                         JOIN `posts` AS `p` ON `tid` = `p`.`post_id`
                                         AND `bid` = `p`.`board_id`
+                                        JOIN `post_files` USING(`posts_rowid`)
+                                        JOIN `files` USING(`file_id`)
                                         ORDER BY `thread_id` DESC LIMIT ? OFFSET ?");
     }
 
     $sth_1->execute($board_id,$limit,$offset);
 
     my @thread_list;
-    while(my ($count,$posts_rowid,$board_id,$thread_id,$post_id,$subject,$user,$date,$text) = $sth_1->fetchrow) {
-        push(@thread_list, {
-                            total_answers => $count,
-                            posts_rowid => $posts_rowid,
-                            board_id => $board_id,
-                            thread_id => $thread_id,
-                            post_id => $post_id,
-                            subject => $subject,
-                            user => $user,
-                            date => $date,
-                            text => $text});
+    my $file_list;
+    my $current_posts_rowid = -1;
+    while(my ($count,$posts_rowid,$board_id,$thread_id,$post_id,$subject,$user,$date,$text,$file_id,$path,$md5) = $sth_1->fetchrow) {
+        if($current_posts_rowid != $posts_rowid) {
+            $current_posts_rowid = $posts_rowid;
+            $file_list = _new_array();
+            push(@thread_list, { total_answers => $count,
+                                 posts_rowid => $posts_rowid,
+                                 board_id => $board_id,
+                                 thread_id => $thread_id,
+                                 post_id => $post_id,
+                                 subject => $subject,
+                                 user => $user,
+                                 date => $date,
+                                 text => $text,
+                                 file_list => $file_list});
+        }
+        if($file_id) {
+            push(@{$file_list}, { file_id => $file_id, path => $path, md5 => $md5 });
+        }
     }
 
     return \@thread_list;
@@ -448,23 +473,6 @@ sub get_file_list_count {
     my ($count) = $sth->fetchrow;
 
     return $count;
-}
-
-sub get_file_list_by_post {
-    my $self = shift;
-    my $posts_rowid = shift || croak("need posts_rowid");
-
-    my $sth = $self->{dbh}->prepare("SELECT `file_id`,`path`,`md5` FROM `post_files`
-                                     JOIN `files` USING(`file_id`)
-                                     WHERE `posts_rowid` = ? ORDER BY `file_id` ASC");
-
-    my @file_list;
-    $sth->execute($posts_rowid);
-    while(my ($file_id,$path,$md5) = $sth->fetchrow) {
-        push(@file_list, { file_id => $file_id, path => $path, md5 => $md5});
-    }
-
-    return \@file_list;
 }
 
 sub get_file_list_by_tag {
@@ -845,6 +853,12 @@ sub setup {
     $dbh->do("CREATE INDEX IF NOT EXISTS `post_files_index` ON `post_files` (`filename`)");
 
     $dbh->commit;
+}
+
+sub _new_array {
+    my $self = shift;
+    my @array;
+    return \@array;
 }
 
 sub DESTROY {

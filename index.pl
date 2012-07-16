@@ -122,7 +122,6 @@ sub board {
     my $thread_list = $db->get_thread_list($board_id,$order,$limit,$offset);
     
     foreach(@$thread_list) {
-        $_->{file_list} = $db->get_file_list_by_post($_->{posts_rowid});
         foreach(@{$_->{file_list}}) {
             $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
         }
@@ -161,7 +160,6 @@ sub thread {
     my $post_list = $db->get_thread($board_id,$thread_id);
 
     foreach(@$post_list) {
-        $_->{file_list} = $db->get_file_list_by_post($_->{posts_rowid});
         foreach(@{$_->{file_list}}) {
             $_->{thumb} = Utilities::create_file_link($_->{file_id},$_->{path},$file_folder,$thumb_folder);
         }
