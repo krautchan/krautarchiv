@@ -122,6 +122,7 @@ sub create_graph {
      -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
      -v "Posts/Day" \\
      --alt-y-grid --end $last --start end-1month \\
+     --x-grid HOUR:12:DAY:1:DAY:1:86400:%a \\
      -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
      DEF:p=$data_folder/$board-year.rrd:posts:AVERAGE \\
      VDEF:avg=p,AVERAGE \\
