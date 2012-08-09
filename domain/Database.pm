@@ -20,14 +20,20 @@ sub new {
     };
 
     bless $self, $class;
-
     return $self;
+}
+
+sub commit {
+    my $self = shift;
+
+    $self->{dbh}->commit();
 }
 
 sub add_board {
     my $self = shift;
     my $board = shift || croak("need board");
-
+    
+    
     my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `boards`(`board`) VALUES(?)");
     my $sth_2 = $self->{dbh}->prepare("SELECT `board_id` FROM `boards` WHERE `board` = ?");
 
@@ -35,7 +41,6 @@ sub add_board {
     $sth_2->execute($board);
 
     my ($board_id) = $sth_2->fetchrow;
-    $self->{dbh}->commit;
     
     return $board_id;
 }
@@ -47,9 +52,7 @@ sub add_thread_data {
     my $content_length = shift || croak("gibe content_length");
     
     my $sth = $self->{dbh}->prepare("INSERT OR IGNORE INTO `threads`(`board_id`,`thread_id`,`content_length`) VALUES (?,?,?)");
-    $sth->execute($board_id,$thread_id,$content_length);
-    
-    $self->{dbh}->commit;
+    $sth->execute($board_id,$thread_id,$content_length);    
 }
 
 
@@ -62,7 +65,8 @@ sub add_post {
     my $user = shift;
     my $date = shift;
     my $text = shift;
-
+    
+    
     my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `posts`(`board_id`,`thread_id`,`post_id`,`subject`,`user`,`date`,`text`)
                                        VALUES(?,?,?,?,?,?,?)");
 
@@ -73,7 +77,6 @@ sub add_post {
     $sth_2->execute($board_id, $thread_id, $post_id);
 
     my ($posts_rowid) = $sth_2->fetchrow;
-    $self->{dbh}->commit;
 
     return $posts_rowid
 }
@@ -84,6 +87,7 @@ sub add_file {
     my $timestamp = shift || croak("need timestamp");
     my $md5 = shift || croak("need md5");
 
+    
     my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `files`(`path`,`timestamp`,`md5`) VALUES(?,?,?)");
     my $sth_2 = $self->{dbh}->prepare("SELECT `file_id` FROM `files` WHERE `md5` = ?");
 
@@ -91,8 +95,7 @@ sub add_file {
     $sth_2->execute($md5);
 
     my ($file_id) = $sth_2->fetchrow;
-    $self->{dbh}->commit;
-
+    
     return $file_id;
 }
 
@@ -101,12 +104,11 @@ sub add_file_to_post {
     my $file_id = shift || croak("need file_id");
     my $posts_rowid = shift || croak("need posts_rowid");
     my $filename = shift || "";
-
+    
+    
     my $sth = $self->{dbh}->prepare("INSERT OR IGNORE INTO `post_files`(`file_id`,`posts_rowid`,`filename`) VALUES(?,?,?)");
 
     $sth->execute($file_id,$posts_rowid,$filename);
-
-    $self->{dbh}->commit;
 }
 
 
@@ -114,6 +116,7 @@ sub add_tag {
     my $self = shift;
     my $tag = shift || croak("need tag");
 
+    
     my $sth_1 = $self->{dbh}->prepare("INSERT OR IGNORE INTO `tags`(`tag`) VALUES(?)");
     my $sth_2 = $self->{dbh}->prepare("SELECT `tag_id` FROM `tags` WHERE `tag` = ?");
 
@@ -122,7 +125,7 @@ sub add_tag {
 
     my ($tag_id) = $sth_2->fetchrow;
     $self->{dbh}->commit;
-
+    
     return $tag_id;
 }
 
@@ -130,12 +133,14 @@ sub add_tag_to_file {
     my $self = shift;
     my $tag_id = shift || croak("need tag_id");
     my $file_id = shift || croak("need file_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("INSERT OR IGNORE INTO `file_tags`(`tag_id`,`file_id`) VALUES(?,?)");
 
     $sth->execute($tag_id,$file_id);
 
     $self->{dbh}->commit;
+    
 }
 
 sub update_thread_data {
@@ -143,6 +148,7 @@ sub update_thread_data {
     my $board_id = shift || croak("gibe board_id");
     my $thread_id = shift || croak("gibe thread_id");
     my $content_length = shift || croak("gibe content_length");
+        
     
     my $sth = $self->{dbh}->prepare("UPDATE `threads` SET `content_length` = ?
                                      WHERE `board_id` = ? AND `thread_id` = ?");
@@ -156,13 +162,16 @@ sub update_thread_data {
 sub get_board {
     my $self = shift;
     my $board_id = shift || croak("need board_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `board` FROM `boards` WHERE `board_id` = ?");
     $sth->execute($board_id);
 
     if(my ($board) = $sth->fetchrow) {
+        
         return $board;
     } else {
+        
         return undef;
     }
 }
@@ -170,13 +179,16 @@ sub get_board {
 sub get_board_id {
     my $self = shift;
     my $board = shift || croak("need board");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `board_id` FROM `boards` WHERE `board` = ?");
     $sth->execute($board);
 
     if(my ($board_id) = $sth->fetchrow) {
+        
         return $board_id;
     } else {
+        
         return undef;
     }
 }
@@ -186,6 +198,7 @@ sub get_thread {
     my $board_id = shift || croak("need board_id");
     my $thread_id = shift || croak("need thread_id");
 
+    
     my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`board_id`,`thread_id`,`post_id`,`subject`,`user`,`date`,`text`,`file_id`,`path`,`md5`
                                      FROM `posts`
                                      LEFT JOIN `post_files` USING(`posts_rowid`)
@@ -216,7 +229,7 @@ sub get_thread {
             push(@{$file_list}, { file_id => $file_id, path => $path, md5 => $md5 });
         }
     }
-
+    
     return \@post_list;
 }
 
@@ -224,7 +237,8 @@ sub get_thread_data {
     my $self = shift;
     my $board_id = shift || croak("gibe board_id");
     my $thread_id = shift || croak("give thread_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `board_id`,`thread_id`,`content_length`
                                      FROM `threads`
                                      WHERE `board_id` = ? AND `thread_id` = ?");
@@ -232,11 +246,13 @@ sub get_thread_data {
     $sth->execute($board_id,$thread_id);
     
     if(my ($bid,$tid,$cl) = $sth->fetchrow) {
+        
         return { board_id => $bid,
                  thread_id => $tid,
                  content_length => $cl
                };
     } else {
+        
         return undef;
     }
 }
@@ -245,13 +261,15 @@ sub get_post {
     my $self = shift;
     my $board_id = shift || croak("need board_id");
     my $post_id = shift || croak("need post_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `posts_rowid`,`thread_id`,`subject`,`user`,`date`,`text` FROM `posts`
                                      WHERE `board_id` = ? AND `post_id` = ?");
 
     $sth->execute($board_id, $post_id);
 
     if(my ($posts_rowid,$thread_id,$subject,$user,$date,$text) = $sth->fetchrow) {
+        
         return {
             posts_rowid => $posts_rowid,
             thread_id => $thread_id,
@@ -261,6 +279,7 @@ sub get_post {
             text => $text
         }
     } else {
+        
         return undef;
     }
 }
@@ -268,18 +287,21 @@ sub get_post {
 sub get_file {
     my $self = shift;
     my $file_id = shift || croak("need file_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `file_id`, `path`, `md5`
                                      FROM `files` WHERE `file_id` = ?");
     $sth->execute($file_id);
 
     if(my ($id,$path,$md5) = $sth->fetchrow) {
+        
         return { 
             file_id => $id,
             path => $path,
             md5 => $md5
         };
     } else {
+        
         return undef;
     }
 }
@@ -287,17 +309,20 @@ sub get_file {
 sub get_file_by_md5 {
     my $self = shift;
     my $md5 = shift || croak("need md5");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `file_id`, `path`, `md5` FROM `files` WHERE `md5` = ?");
     $sth->execute($md5);
 
     if(my ($file_id,$path,$md5) = $sth->fetchrow) {
+        
         return { 
             file_id => $file_id,
             path => $path,
             md5 => $md5
         };
     } else {
+        
         return undef;
     }
 }
@@ -305,7 +330,8 @@ sub get_file_by_md5 {
 sub get_file_info_by_file_id {
     my $self = shift;
     my $file_id = shift || croak("need file_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `board`,`board_id`,`thread_id`,`post_id`, `file_id`,`filename`
                                      FROM `post_files`
                                      JOIN `posts` USING(`posts_rowid`)
@@ -325,12 +351,14 @@ sub get_file_info_by_file_id {
                       });
     }
 
+    
     return \@id_list;
 }
 
 sub get_board_list {
     my $self = shift;
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `board_id`,`board`,COUNT(`threads`)
                                      FROM `boards`
                                      JOIN ( SELECT `board_id`,`thread_id` AS `threads`
@@ -348,6 +376,7 @@ sub get_board_list {
                             thread_count => $thread_count });
     }
 
+    
     return \@board_list;
 }
 
@@ -412,7 +441,7 @@ sub get_thread_list {
             push(@{$file_list}, { file_id => $file_id, path => $path, md5 => $md5 });
         }
     }
-
+    
     return \@thread_list;
 }
 
@@ -434,21 +463,45 @@ sub get_file_list {
     if($board_id) {
         $comparator = "=";
     }
-
-    my $sth = $self->{dbh}->prepare("SELECT `file_id`,`path`,`md5` FROM `files`
-                                    JOIN `post_files` USING (`file_id`)
-                                    JOIN `posts` USING(`posts_rowid`)
-                                    WHERE `path` LIKE ? AND `board_id` $comparator ?
-                                    GROUP BY `file_id` ORDER BY `timestamp` $order
-                                    LIMIT ? OFFSET ?");
+    
+    
+    my $sth = $self->{dbh}->prepare("SELECT `file_id`,`path`,`md5`,`board`,`board_id`,`thread_id`,`post_id`,`filename`
+                                     FROM `files`
+                                     JOIN `post_files` USING (`file_id`)
+                                     JOIN `posts` USING(`posts_rowid`)
+                                     JOIN `boards` USING(`board_id`)
+                                     WHERE `path` LIKE ? AND `board_id` $comparator ?
+                                     ORDER BY `timestamp` $order
+                                     LIMIT ? OFFSET ?");
 
     $sth->execute("%$file_type", $board_id, $limit, $offset);
 
     my @file_list = ();
-    while(my ($file_id,$path,$md5) = $sth->fetchrow) {
-        push(@file_list, { file_id => $file_id, path => $path, md5 => $md5 });
-    }
+    my $board_list;
+    my $current_file_id = -1;
+    while(my ($file_id,$path,$md5,$board,$board_id,$thread_id,$post_id,$filename) = $sth->fetchrow) {
+        if($current_file_id != $file_id) {
+            $current_file_id = $file_id;
+            $board_list = _new_array();
+            push(@file_list, {
+                               file_id => $file_id,
+                               path => $path,
+                               md5 => $md5,
+                               board_list => $board_list
+                             }
+                );
+        }
 
+        push(@{$board_list}, {
+                               board => $board,
+                               board_id => $board_id,
+                               thread_id => $thread_id,
+                               post_id => $post_id,
+                               filename => $filename
+                             }
+            );
+    }
+    
     return \@file_list;
 }
 
@@ -462,6 +515,7 @@ sub get_file_list_count {
         $comparator = "=";
     }
 
+    
     my $sth = $self->{dbh}->prepare("SELECT COUNT(*)
                                      FROM (SELECT `path` FROM `files`
                                            JOIN `post_files` USING (`file_id`)
@@ -471,7 +525,7 @@ sub get_file_list_count {
 
     $sth->execute("%$filetype", $board_id);
     my ($count) = $sth->fetchrow;
-
+    
     return $count;
 }
 
@@ -481,6 +535,7 @@ sub get_file_list_by_tag {
     my $limit = shift || 0;
     my $offset = shift || 0;
 
+    
     my $sth = $self->{dbh}->prepare("SELECT `file_id`,`path`,`md5` FROM `tags`
                                      JOIN `file_tags` USING(`tag_id`)
                                      JOIN `files` USING(`file_id`)
@@ -493,14 +548,15 @@ sub get_file_list_by_tag {
     while(my ($file_id,$path,$md5) = $sth->fetchrow) {
         push(@file_list,{file_id => $file_id, path => $path, md5 => $md5});
     }
-
+    
     return \@file_list;
 }
 
 sub get_file_list_by_tag_count {
     my $self = shift;
     my $tag_id = shift || croak("need tag_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM `tags`
                                      JOIN `file_tags` USING(`tag_id`)
                                      JOIN `files` USING(`file_id`)
@@ -508,14 +564,15 @@ sub get_file_list_by_tag_count {
     
     $sth->execute($tag_id);
     my ($count) = $sth->fetchrow;
-
+    
     return $count;
 }
 
 sub get_tag_list_by_file_id {
     my $self = shift;
     my $file_id = shift || croak("need file_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `tag_id`,`tag` FROM `tags`
                                      JOIN `file_tags` USING (`tag_id`)
                                      JOIN `files` USING (`file_id`)
@@ -528,7 +585,7 @@ sub get_tag_list_by_file_id {
     while(my ($tag_id,$tag) = $sth->fetchrow) {
         push(@tag_list, { tag_id => $tag_id, tag => $tag });
     }
-
+    
     return \@tag_list;
 }
 
@@ -536,6 +593,7 @@ sub get_tag_list_by_letter {
     my $self = shift;
     my $letter = shift || "";
 
+    
     my $sth = $self->{dbh}->prepare("SELECT `tag_id`,`tag` FROM `tags` WHERE `tag` LIKE ?");
 
     $sth->execute("$letter%");
@@ -544,6 +602,8 @@ sub get_tag_list_by_letter {
     while(my ($tag_id,$tag) = $sth->fetchrow) {
         push(@tag_list, { tag_id => $tag_id, tag=>$tag });
     }
+
+    
     return \@tag_list;
 }
 
@@ -551,12 +611,15 @@ sub get_post_time_by_board_id {
     my $self = shift;
     my $board_id = shift || croak("need board id");
 
+    
     my $sth = $self->{dbh}->prepare("SELECT strftime('%s',min(`date`)),strftime('%s',max(`date`)) FROM `posts`
                                      WHERE `board_id` = ?");
     $sth->execute($board_id);
     if(my ($min,$max) = $sth->fetchrow) {
+        
         return ($min, $max);
     } else {
+        
         return ();
     }
 }
@@ -568,6 +631,7 @@ sub get_post_count_by_time_interval {
     my $stop_time = shift || croak("need stop_time");
     my $interval = shift || croak("need interval");
 
+    
     my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM `posts`
                                      WHERE `board_id` = ?
                                      AND ? <= strftime(\"%s\",`date`)
@@ -582,6 +646,7 @@ sub get_post_count_by_time_interval {
         push(@post_count, {count => $count, time => $i + $interval});
         print("$i/$stop_time $count\n");
     }
+    
 
     return \@post_count;
 }
@@ -590,6 +655,7 @@ sub get_popular_subjects_list {
     my $self = shift;
     my $limit = shift || 10;
 
+    
     my $sth = $self->{dbh}->prepare("SELECT COUNT(`subject`),`subject` FROM `posts`
                                      WHERE `subject` != \"\"
                                      GROUP BY `subject` ORDER BY COUNT(`subject`) DESC
@@ -601,6 +667,7 @@ sub get_popular_subjects_list {
     while(my ($count,$subject) = $sth->fetchrow) {
         push(@subject_list,{ count => $count, subject => $subject });
     }
+    
 
     return \@subject_list;
 }
@@ -608,7 +675,8 @@ sub get_popular_subjects_list {
 sub get_popular_files_list {
     my $self = shift;
     my $limit = shift || 10;
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT `file_id`,`path`,`md5` FROM `post_files`
                                      JOIN `files` USING(`file_id`)
                                      GROUP BY `file_id` ORDER BY COUNT(`file_id`) DESC
@@ -624,6 +692,7 @@ sub get_popular_files_list {
                                   md5 => $md5
         });
     }
+    
 
     return \@popular_file_list;
 }
@@ -631,7 +700,8 @@ sub get_popular_files_list {
 sub get_first_post_time_by_board_id {
     my $self = shift;
     my $board_id = shift || croak("need board_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT strftime(\"%s\",`date`) FROM `posts`
                                      WHERE `board_id` = ? ORDER BY `post_id`
                                      LIMIT 1");
@@ -639,8 +709,10 @@ sub get_first_post_time_by_board_id {
     $sth->execute($board_id);
 
     if(my ($time) = $sth->fetchrow) {
+        
         return $time;
     } else {
+        
         return undef;
     }
 }
@@ -648,25 +720,30 @@ sub get_first_post_time_by_board_id {
 sub get_text_length_by_board_id {
     my $self = shift;
     my $board_id = shift || croak("need board_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT length(group_concat(`text`,\"\")) FROM `posts`
                                      WHERE `board_id` = ?");
     $sth->execute($board_id);
 
     if(my ($text_length) = $sth->fetchrow) {
+        
         return $text_length
     } else {
+        
         return undef;
     }
 }
 
 sub get_total_files {
     my $self = shift;
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM `files`");
 
     $sth->execute();
     my ($count) = $sth->fetchrow;
+    
 
     return $count;
 }
@@ -674,14 +751,17 @@ sub get_total_files {
 sub get_total_posts_by_board_id {
     my $self = shift;
     my $board_id = shift || croak("need board id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM `posts`
                                      WHERE `board_id` = ?");
     
     $sth->execute($board_id);
     if(my ($post_count) = $sth->fetchrow) {
+        
         return $post_count;
     } else {
+        
         return undef;
     }
 }
@@ -689,7 +769,8 @@ sub get_total_posts_by_board_id {
 sub get_total_posts {
     my $self = shift;
     my $thread_id = shift || undef;
-
+    
+    
     my $sth;
     if($thread_id) {
         $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM `posts`
@@ -701,6 +782,7 @@ sub get_total_posts {
     }
 
     my ($count) = $sth->fetchrow;
+    
 
     return $count;
 }
@@ -710,6 +792,7 @@ sub get_total_threads {
     my $board_id = shift;
 
     my $sth;
+    
     if($board_id) {
         $sth = $self->{dbh}->prepare("SELECT COUNT(DISTINCT `thread_id`) FROM `posts` WHERE `board_id` = ?");
         $sth->execute($board_id);
@@ -719,18 +802,21 @@ sub get_total_threads {
     }
 
     my ($count) = $sth->fetchrow;
+    
 
     return $count;
 }
 
 sub get_current_time {
     my $self = shift;
-
+    
+    
     my $sth = $self->{dbh}->prepare("SELECT strftime(\"%s\",\"now\")");
 
     $sth->execute();
 
     my ($time) = $sth->fetchrow;
+    
 
     return $time;
 }
@@ -739,11 +825,14 @@ sub delete_file {
     my $self = shift;
     my $file_id = shift || croak("gibe file_id");
     
+    
     my $sth = $self->{dbh}->prepare("DELETE FROM `files` WHERE `file_id` = ?");
     if ($sth->execute($file_id)) {
         $self->{dbh}->commit;
+        
         return 1;
     }
+    
     return 0;
 }
 
@@ -752,7 +841,8 @@ sub delete_tag {
     my $self = shift;
     my $tag_id = shift || croak("need tag_id");
     my $file_id = shift || croak("need file_id");
-
+    
+    
     my $sth = $self->{dbh}->prepare("DELETE FROM `file_tags`
                                      WHERE EXISTS (SELECT * FROM `tags`
                                                    WHERE `file_tags`.`tag_id` = `tags`.`tag_id`
@@ -761,6 +851,7 @@ sub delete_tag {
 
     $sth->execute($tag_id,$file_id);
     $self->{dbh}->commit;
+    
 }
 
 sub setup {

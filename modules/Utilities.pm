@@ -6,6 +6,7 @@ use warnings;
 package Utilities;
 
 use Carp qw( croak );
+use Digest::MD5;
 use File::Path qw(make_path);
 use Image::Imlib2;
 
@@ -74,87 +75,6 @@ sub create_thumbnail {
         return $thumbpath;
     }
     return $path;
-}
-
-sub create_graph {
-    my $board = shift;
-    my $file_folder = shift;
-    my $data_folder = shift;
-    
-    my $last = `rrdtool last $data_folder/$board.rrd`;
-    $last =~ s/\s//g;
-
-    `rrdtool graph $file_folder/${board}_day.svg -a SVG -t "/${board}/ Posts/Day" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
-     -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
-     -v "Posts/5 Min" \\
-     --alt-y-grid --end $last --start end-1d \\
-     --x-grid MINUTE:10:HOUR:1:MINUTE:120:0:%R \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
-     DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
-     VDEF:avg=p,AVERAGE \\
-     VDEF:min=p,MINIMUM \\
-     VDEF:max=p,MAXIMUM \\
-     AREA:p#665C00CC:"Posts\\l" \\
-     COMMENT:"\\u" \\
-     GPRINT:min:"Minimum %4.2lf Posts\\r" \\
-     GPRINT:avg:"Average %4.2lf Posts\\r" \\
-     GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
-
-    `rrdtool graph $file_folder/${board}_week.svg -a SVG -t "/${board}/ Posts/Week" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
-     -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
-     -v "Posts/5 Min" \\
-     --alt-y-grid --end $last --start end-1w \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
-     DEF:p=$data_folder/$board.rrd:posts:AVERAGE \\
-     VDEF:avg=p,AVERAGE \\
-     VDEF:min=p,MINIMUM \\
-     VDEF:max=p,MAXIMUM \\
-     AREA:p#665C00CC:"Posts\\l" \\
-     COMMENT:"\\u" \\
-     GPRINT:min:"Minimum %4.2lf Posts\\r" \\
-     GPRINT:avg:"Average %4.2lf Posts\\r" \\
-     GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
-
-    `rrdtool graph $file_folder/${board}_month.svg -a SVG -t "/${board}/ Posts/Month" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
-     -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
-     -v "Posts/Day" \\
-     --alt-y-grid --end $last --start end-1month \\
-     --x-grid HOUR:12:DAY:1:DAY:1:86400:%a \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
-     DEF:p=$data_folder/$board-year.rrd:posts:AVERAGE \\
-     VDEF:avg=p,AVERAGE \\
-     VDEF:min=p,MINIMUM \\
-     VDEF:max=p,MAXIMUM \\
-     AREA:p#665C00CC:"Posts\\l" \\
-     COMMENT:"\\u" \\
-     GPRINT:min:"Minimum %4.2lf Posts\\r" \\
-     GPRINT:avg:"Average %4.2lf Posts\\r" \\
-     GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
-
-    `rrdtool graph $file_folder/${board}_year.svg -a SVG -t "/${board}/ Posts/Year" \\
-     --dynamic-labels --full-size-mode -w 1030 -h 300 -X 0 -i --disable-rrdtool-tag \\
-     -W "Krautarchiv - Das Archiv für den Bernd von Welt" \\
-     -v "Posts/Day" \\
-     --alt-y-grid --end $last --start end-1year \\
-     -c BACK#AAAACC -c CANVAS#EEEEEE -c SHADEA#EEEEEE -c SHADEB#EEEEEE --border 3 --font DEFAULT:0:Helvetica-Bold \\
-     DEF:p=$data_folder/$board-year.rrd:posts:AVERAGE \\
-     VDEF:avg=p,AVERAGE \\
-     VDEF:min=p,MINIMUM \\
-     VDEF:max=p,MAXIMUM \\
-     AREA:p#665C00CC:"Posts\\l" \\
-     COMMENT:"\\u" \\
-     GPRINT:min:"Minimum %4.2lf Posts\\r" \\
-     GPRINT:avg:"Average %4.2lf Posts\\r" \\
-     GPRINT:max:"Maximum %4.2lf Posts\\r" &> /dev/null`;
-    
-    return { day => "<img src=\"$file_folder/${board}_day.svg\" width=\"1030\" />",
-             week => "<img src=\"$file_folder/${board}_week.svg\" width=\"1030\" />",
-             month => "<img src=\"$file_folder/${board}_month.svg\" width=\"1030\" />",
-             year => "<img src=\"$file_folder/${board}_year.svg\" width=\"1030\" />"
-           }
 }
 
 sub format_bytes {
