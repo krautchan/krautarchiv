@@ -4,9 +4,7 @@ use strict;
 use warnings;
 
 use Digest::MD5;
-use File::Copy;
 use HTTP::Async;
-use LWP;
 
 require "../domain/Database.pm";
 require "../modules/RRD.pm";
@@ -15,7 +13,10 @@ my $file_folder = "../img";
 my $db_file = "data.db";
 
 # boards that should be archived
-my @boards = ('b','int','vip','a','c','co','d','e','f','fb','k','l','li','m','n','p','ph','sp','t','tv','v','w','we','x','z','zp','ng','prog','wk','h','s','kc','rfk');
+my @boards = ('b','int','vip','a','c','co','d','e','f',
+              'fb','k','l','li','m','n','p','ph','sp',
+              't','tv','v','w','we','x','z','zp','ng',
+              'prog','wk','h','s','kc','rfk');
 
 my $async = HTTP::Async->new;
 my $file_to_post = {};
@@ -27,23 +28,24 @@ $db->setup;
 
 foreach(@boards) {
     $db->add_board($_);
-    $async->add( HTTP::Request->new(GET => "http://krautchan.net/$_/0.html"));
+    $async->add(HTTP::Request->new(GET => "http://krautchan.net/$_/0.html"));
 }
 
 # main event loop
 while(my $res = $async->wait_for_next_response) {
-    print $async->info;
-    print $res->base."\n";
-    
+    printf("Scheduled: %u; In Progress: %u; Finished: %u; Current Page: %s\n",
+        $async->to_send_count, $async->in_progress_count,
+        $async->to_return_count, $res->base);
+
     # downloaded board page
-    if($res->base =~ /(\w{1,3})\/(\d\d?)\.html/) {
+    if($res->base =~ /(\w{1,4})\/(\d\d?)\.html/) {
         my @thread_ids = get_thread_urls($res->content);
-        
+
         # schedule found threads to be checked i they were updated
         foreach(@thread_ids) {
             $async->add(HTTP::Request->new( HEAD => "http://krautchan.net/$1/thread-$_.html"));
         }
-        
+
         # schedule next page
         my $max = ($1 eq 'b' || $1 eq 'int') ? 15 : 10;
         my $next = $2 + 1;
@@ -52,11 +54,8 @@ while(my $res = $async->wait_for_next_response) {
         } else {
             $async->add( HTTP::Request->new(GET => "http://krautchan.net/$1/0.html"));
         }
-        next;
-    }
-    
     # downloaded thread page
-    if($res->base =~ /(\w{1,3})\/thread-(.*)\.html/) {
+    } elsif($res->base =~ /(\w{1,4})\/thread-(.*)\.html/) {
         
         # full thread, save it
         if($res->content) {
@@ -75,9 +74,10 @@ while(my $res = $async->wait_for_next_response) {
                 $async->add(HTTP::Request->new( GET => "http://krautchan.net/$1/thread-$2.html"));
             }
         }
-        next;
+    # downloaded ressource must be a file
+    } else {
+        save_file($res);
     }
-    save_file($res);
 }
 
 exit;

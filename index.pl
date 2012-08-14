@@ -152,7 +152,7 @@ sub thread {
     my $thread_id = $cgi->param('thread_id') || undef;
 
     unless($board_id && $thread_id) {
-        empty_index($cgi,$db);
+        empty_index($cgi, $db, $vars);
         return;
     }
 
@@ -171,6 +171,26 @@ sub thread {
     $vars->{time} = $time;
 
     $template->process('thread.tmpl', $vars) || print $template->error();
+}
+
+sub search {
+    my ($cgi,$db,$vars) = @_;
+    my $search = $cgi->param('s') || undef;
+
+    unless($search) {
+        empty_index($cgi, $db, $vars);
+        return;
+    }
+
+    my $start_time = Time::HiRes::time();
+    my $post_list = $db->search_posts($search);
+
+    my $time = sprintf("%.4f", Time::HiRes::time() - $start_time);
+
+    $vars->{post_list} = $post_list;
+    $vars->{time} = $time;
+
+    $template->process('search.tmpl', $vars) || print $template->error();
 }
 
 sub tags {
@@ -250,16 +270,10 @@ sub stats {
 
 sub graph {
     my ($cgi,$db,$vars) = @_;
-    my $board_id = $cgi->param('board_id');
+    my $board_id = $cgi->param('board_id') || empty_index($cgi,$db);
 
-    my $board = $db->get_board($board_id);
-
-    unless($board) {
-        empty_index($cgi,$db);    
-    }
-
-    $vars->{graph} = Utilities::create_graph($board,$file_folder,$data_folder);
-
+    $vars->{board} = $db->get_board($board_id) || empty_index($cgi,$db);
+    
     $template->process('graph.tmpl', $vars) || print $template->error();
 }
 
@@ -369,6 +383,6 @@ sub show_file {
 }
 
 sub AUTOLOAD {
-    my ($cgi,$db) = @_;
-    empty_index($cgi,$db);
+    my ($cgi, $db, $vars) = @_;
+    empty_index($cgi, $db, $vars);
 }
