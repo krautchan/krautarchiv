@@ -5,6 +5,7 @@ use warnings;
 
 use Digest::MD5;
 use HTTP::Async;
+use HTTP::Request;
 
 require "../domain/Database.pm";
 require "../modules/RRD.pm";
