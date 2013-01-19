@@ -33,52 +33,57 @@ foreach(@boards) {
 }
 
 # main event loop
-while(my $res = $async->wait_for_next_response) {
-    printf("Scheduled: %u; In Progress: %u; Finished: %u; Current Page: %s\n",
-        $async->to_send_count, $async->in_progress_count,
-        $async->to_return_count, $res->base);
+while(1) {
+    eval {
+        while(my $res = $async->wait_for_next_response) {
+            printf("Scheduled: %u; In Progress: %u; Finished: %u; Current Page: %s\n",
+                $async->to_send_count, $async->in_progress_count,
+                $async->to_return_count, $res->base);
 
-    # downloaded board page
-    if($res->base =~ /(\w{1,4})\/(\d\d?)\.html/) {
-        my @thread_ids = get_thread_urls($res->content);
+            # downloaded board page
+            if($res->base =~ /(\w{1,4})\/(\d\d?)\.html/) {
+                my @thread_ids = get_thread_urls($res->content);
 
-        # schedule found threads to be checked i they were updated
-        foreach(@thread_ids) {
-            $async->add(HTTP::Request->new( HEAD => "http://krautchan.net/$1/thread-$_.html"));
-        }
+                # schedule found threads to them check for updates
+                foreach(@thread_ids) {
+                    $async->add(HTTP::Request->new( HEAD => "http://krautchan.net/$1/thread-$_.html"));
+                }
 
-        # schedule next page
-        my $max = ($1 eq 'b' || $1 eq 'int') ? 15 : 10;
-        my $next = $2 + 1;
-        if($next < $max) {
-            $async->add( HTTP::Request->new(GET => "http://krautchan.net/$1/$next.html"));
-        } else {
-            $async->add( HTTP::Request->new(GET => "http://krautchan.net/$1/0.html"));
-        }
-    # downloaded thread page
-    } elsif($res->base =~ /(\w{1,4})\/thread-(.*)\.html/) {
-        
-        # full thread, save it
-        if($res->content) {
-            my $file_list = save_thread($1, parse_thread($1, $2, $res));
+                # schedule next page
+                my $max = ($1 eq 'b' || $1 eq 'int') ? 15 : 10;
+                my $next = $2 + 1;
+                if($next < $max) {
+                    $async->add( HTTP::Request->new(GET => "http://krautchan.net/$1/$next.html"));
+                } else {
+                    $async->add( HTTP::Request->new(GET => "http://krautchan.net/$1/0.html"));
+                }
+            # downloaded thread page
+            } elsif($res->base =~ /(\w{1,4})\/thread-(.*)\.html/) {
+                # full thread, save it
+                if($res->content) {
+                    my $file_list = save_thread($1, parse_thread($1, $2, $res));
             
-            # schedule files for download
-            foreach(@$file_list) {
-                my $url = "http://krautchan.net/files/$_->{path}";
-                $file_to_post->{$url} = $_;
-                $async->add(HTTP::Request->new( GET => "$url"));
-            }
-        # thread head, check if it was updated
-        } else {
-            # schedule thread for download if it was updated
-            if(has_thread_changed($1, $2, $res)) {
-                $async->add(HTTP::Request->new( GET => "http://krautchan.net/$1/thread-$2.html"));
+                    # schedule files for download
+                    foreach(@$file_list) {
+                        my $url = "http://krautchan.net/files/$_->{path}";
+                        $file_to_post->{$url} = $_;
+                        $async->add(HTTP::Request->new(GET => "$url"));
+                    }
+                # thread head, check if it was updated
+                } else {
+                    # schedule thread for download if it was updated
+                    if(has_thread_changed($1, $2, $res)) {
+                        $async->add(HTTP::Request->new(GET => "http://krautchan.net/$1/thread-$2.html"));
+                    }
+                }
+            # downloaded ressource must be a file
+            } else {
+                save_file($res);
             }
         }
-    # downloaded ressource must be a file
-    } else {
-        save_file($res);
-    }
+    };
+
+    warn $@ if $@;
 }
 
 exit;

@@ -1,7 +1,7 @@
 [% FOREACH post IN post_list %]
     <table class=post>
         <tr class=head>
-            <td>
+            <td id="[% post.post_id %]">
                 [% post.post_id %] | <span class=subject>[% post.subject %]</span> | <span class=username>[% post.user %]</span> | [% post.date %]
             </td>
         </tr>
