@@ -82,8 +82,14 @@ while(1) {
             }
         }
     };
-
-    warn $@ if $@;
+    
+    if($@) {
+        warn $@;
+        $async = HTTP::Async->new;
+        foreach(@boards) {
+            $async->add(HTTP::Request->new(GET => "http://krautchan.net/$_/0.html"));
+        }
+    }
 }
 
 exit;
