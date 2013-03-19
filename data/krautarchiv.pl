@@ -134,12 +134,7 @@ sub save_thread {
     
     my @file_list = ();
 
-    unless($thread) {
-        print "404 - Das haben wir nicht mehr. Kriegen wir auch nicht mehr rein.\n";
-        return;
-    }
-    
-    unless($thread->{thread_id}) {
+    if(!$thread || !$thread->{thread_id}) {
         print "404 - Das haben wir nicht mehr. Kriegen wir auch nicht mehr rein.\n";
         return;
     }
