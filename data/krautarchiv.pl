@@ -99,7 +99,7 @@ sub daemonize {
 }
 
 sub setup_database {
-    $config->{db} = Database->new("data.db");
+    $config->{db} = Database->new($config->{db_file});
     mkdir($config->{file_folder});
     $config->{db}->setup;
 }
