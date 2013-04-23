@@ -36,7 +36,8 @@ sub init_config {
     $config = { 'boards' => [],
                 'file_to_post' => {},
                 'db_file' => 'data.db',
-                'file_folder' => '../img'
+                'file_folder' => '../img',
+                'useragent' => 'krautarchiv/0x1f (Das Archiv fuer den Bernd von Welt)'
               };
 
     GetOptions($config, 'boards|b=s@',
@@ -44,7 +45,8 @@ sub init_config {
                         'debug|d',
                         'file_folder|f=s',
                         'help|h',
-                        'nodaemon|n'
+                        'nodaemon|n',
+                        'useragent|ua=s'
               ) or die("Error while parsing arguments");
 
     @{$config->{boards}} = split(/,/, join(',', @{$config->{boards}}));
@@ -55,6 +57,8 @@ sub init_config {
                              't','tv','v','w','we','x','z','zp','ng',
                              'prog','wk','h','s','kc','rfk'];
     }
+
+    $config->{header} = HTTP::Headers->new('User-Agent' => $config->{useragent});
 }
 
 sub print_help {
@@ -66,6 +70,7 @@ sub print_help {
     print "    -f PATH         Folder where images should be saved\n";
     print "    -h              Print this help\n";
     print "    -n              Don't fork into background\n";
+    print "    -ua STRING      Set user agent\n";
 }
 
 sub log_me {
@@ -76,7 +81,7 @@ sub log_me {
     }
 
     if($config->{nodaemon}) {
-        print($msg);
+        print("$msg\n");
     } else {
         openlog('krautarchiv', 'pid,cons', 'user');
         syslog($priority, $msg);
@@ -104,7 +109,7 @@ sub main_loop {
     
     foreach(@{$config->{boards}}) {
         $config->{db}->add_board($_);
-        $async->add(HTTP::Request->new(GET => "http://krautchan.net/$_/0.html"));
+        $async->add(HTTP::Request->new('GET', "http://krautchan.net/$_/0.html", $config->{header}));
     }
 
     while(1) {
@@ -121,16 +126,16 @@ sub main_loop {
 
                     # schedule found threads to them check for updates
                     foreach(@thread_ids) {
-                    $async->add(HTTP::Request->new( HEAD => "http://krautchan.net/$1/thread-$_.html"));
+                        $async->add(HTTP::Request->new('HEAD', "http://krautchan.net/$1/thread-$_.html", $config->{header}));
                     }
 
                     # schedule next page
                     my $max = ($1 eq 'b' || $1 eq 'int') ? 15 : 10;
                     my $next = $2 + 1;
                     if($next < $max) {
-                        $async->add( HTTP::Request->new(GET => "http://krautchan.net/$1/$next.html"));
+                        $async->add(HTTP::Request->new('GET', "http://krautchan.net/$1/$next.html", $config->{header}));
                     } else {
-                        $async->add( HTTP::Request->new(GET => "http://krautchan.net/$1/0.html"));
+                        $async->add(HTTP::Request->new('GET', "http://krautchan.net/$1/0.html", $config->{header}));
                     }
                 # downloaded thread page
                 } elsif($res->base =~ /(\w{1,4})\/thread-(.*)\.html/) {
@@ -142,13 +147,13 @@ sub main_loop {
                         foreach(@$file_list) {
                             my $url = "http://krautchan.net/files/$_->{path}";
                             $config->{file_to_post}->{$url} = $_;
-                            $async->add(HTTP::Request->new(GET => "$url"));
+                            $async->add(HTTP::Request->new('GET', "$url", $config->{header}));
                         }
                     # thread head, check if it was updated
                     } else {
                         # schedule thread for download if it was updated
                         if(has_thread_changed($1, $2, $res)) {
-                            $async->add(HTTP::Request->new(GET => "http://krautchan.net/$1/thread-$2.html"));
+                            $async->add(HTTP::Request->new('GET', "http://krautchan.net/$1/thread-$2.html", $config->{header}));
                         }
                     }
                 # downloaded ressource must be a file
@@ -162,7 +167,7 @@ sub main_loop {
             log_me("WARNING", "$@ - Attempt to reconnect");
             $async = HTTP::Async->new;
             foreach(@{$config->{boards}}) {
-                $async->add(HTTP::Request->new(GET => "http://krautchan.net/$_/0.html"));
+                $async->add(HTTP::Request->new('GET', "http://krautchan.net/$_/0.html", $config->{header}));
             }
         }
     }
